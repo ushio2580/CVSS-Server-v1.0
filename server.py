@@ -277,187 +277,244 @@ def html_page(title: str, body: str) -> bytes:
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{title}</title>
         <style>
+            /* Reset and base styles */
+            * {{
+                box-sizing: border-box;
+            }}
+            
             body {{ 
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
                 margin: 0; 
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
                 color: #333;
+                line-height: 1.6;
             }}
+            
             .container {{ 
-                max-width: 1000px; 
+                max-width: 1200px; 
                 margin: 0 auto; 
-                padding: 2rem;
+                padding: 1rem;
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: blur(10px);
                 border-radius: 15px;
                 box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                margin-top: 2rem;
-                margin-bottom: 2rem;
+                margin-top: 1rem;
+                margin-bottom: 1rem;
             }}
+            
             h1 {{ 
                 color: #2c3e50; 
                 text-align: center;
-                margin-bottom: 2rem;
-                font-size: 2.5rem;
+                margin-bottom: 1.5rem;
+                font-size: clamp(1.8rem, 4vw, 2.5rem);
                 font-weight: 300;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                line-height: 1.2;
             }}
+            
             h2 {{ 
                 color: #34495e; 
                 border-bottom: 3px solid #3498db;
                 padding-bottom: 0.5rem;
-                margin-top: 2rem;
+                margin-top: 1.5rem;
+                font-size: clamp(1.3rem, 3vw, 1.8rem);
             }}
+            
             label {{ 
                 display: block; 
                 margin-top: 1rem; 
                 font-weight: 600;
                 color: #2c3e50;
-                font-size: 0.95rem;
+                font-size: clamp(0.9rem, 2.5vw, 0.95rem);
             }}
+            
             select, input[type=text] {{ 
                 width: 100%; 
-                padding: 0.75rem; 
+                padding: clamp(0.6rem, 2vw, 0.75rem); 
                 margin-top: 0.5rem; 
                 border: 2px solid #e0e6ed; 
                 border-radius: 8px; 
-                font-size: 1rem;
+                font-size: clamp(0.9rem, 2.5vw, 1rem);
                 transition: all 0.3s ease;
                 background: #fff;
             }}
+            
             select:focus, input[type=text]:focus {{ 
                 outline: none; 
                 border-color: #3498db; 
                 box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
             }}
+            
             button {{ 
                 margin-top: 1.5rem; 
-                padding: 1rem 2rem; 
+                padding: clamp(0.8rem, 3vw, 1rem) clamp(1.5rem, 4vw, 2rem); 
                 background: linear-gradient(45deg, #3498db, #2980b9); 
                 color: #fff; 
                 border: none; 
                 border-radius: 8px; 
                 cursor: pointer; 
-                font-size: 1.1rem;
+                font-size: clamp(1rem, 2.5vw, 1.1rem);
                 font-weight: 600;
                 transition: all 0.3s ease;
                 box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+                width: 100%;
+                max-width: 300px;
             }}
+            
             button:hover {{ 
                 background: linear-gradient(45deg, #2980b9, #1f5f8b);
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
             }}
+            
             .result {{ 
                 margin-top: 1.5rem; 
-                padding: 1.5rem; 
+                padding: clamp(1rem, 3vw, 1.5rem); 
                 background: linear-gradient(135deg, #f8f9fa, #e9ecef);
                 border-radius: 12px;
                 border-left: 5px solid #3498db;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             }}
+            
             .severity-badge {{
                 display: inline-block;
-                padding: 0.5rem 1rem;
+                padding: clamp(0.4rem, 2vw, 0.5rem) clamp(0.8rem, 2.5vw, 1rem);
                 border-radius: 20px;
                 font-weight: 600;
-                font-size: 0.9rem;
+                font-size: clamp(0.8rem, 2.5vw, 0.9rem);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
+                white-space: nowrap;
             }}
+            
             .severity-critical {{ background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; }}
             .severity-high {{ background: linear-gradient(45deg, #e67e22, #d35400); color: white; }}
             .severity-medium {{ background: linear-gradient(45deg, #f39c12, #e67e22); color: white; }}
             .severity-low {{ background: linear-gradient(45deg, #27ae60, #229954); color: white; }}
             .severity-none {{ background: linear-gradient(45deg, #95a5a6, #7f8c8d); color: white; }}
-            .dashboard {{ display: flex; flex-direction: column; gap: 2rem; }}
-            .kpi {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }}
+            
+            .dashboard {{ display: flex; flex-direction: column; gap: clamp(1rem, 3vw, 2rem); }}
+            
+            .kpi {{ 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+                gap: clamp(0.8rem, 2.5vw, 1.5rem); 
+            }}
+            
             .kpi div {{ 
                 background: linear-gradient(135deg, #fff, #f8f9fa); 
                 border: 1px solid #e0e6ed; 
                 border-radius: 12px; 
-                padding: 1.5rem; 
+                padding: clamp(1rem, 3vw, 1.5rem); 
                 text-align: center; 
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
                 transition: transform 0.3s ease;
             }}
+            
             .kpi div:hover {{ transform: translateY(-5px); }}
+            
             .kpi h3 {{ 
                 margin: 0 0 0.5rem 0; 
-                font-size: 1.2rem; 
+                font-size: clamp(1rem, 2.5vw, 1.2rem); 
                 font-weight: 600;
                 color: #2c3e50;
             }}
+            
             .kpi p {{ 
                 margin: 0; 
-                font-size: 2rem; 
+                font-size: clamp(1.5rem, 4vw, 2rem); 
                 font-weight: 700;
                 color: #3498db;
             }}
+            
             .chart-bar-container {{ 
                 display: flex; 
                 align-items: flex-end; 
-                height: 250px; 
-                gap: 15px; 
-                padding: 2rem; 
+                height: clamp(200px, 40vw, 250px); 
+                gap: clamp(8px, 2vw, 15px); 
+                padding: clamp(1rem, 3vw, 2rem); 
                 background: linear-gradient(135deg, #fff, #f8f9fa); 
                 border: 1px solid #e0e6ed; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                overflow-x: auto;
             }}
+            
             .chart-bar {{ 
                 flex: 1; 
+                min-width: 60px;
                 display: flex; 
                 flex-direction: column; 
                 align-items: center; 
                 justify-content: flex-end; 
             }}
+            
             .bar {{ 
                 width: 80%; 
+                min-width: 40px;
                 border-radius: 8px 8px 0 0; 
                 transition: all 0.3s ease;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             }}
+            
             .bar:hover {{ transform: scaleY(1.05); }}
+            
             .bar-label {{ 
                 margin-top: 0.5rem; 
-                font-size: 0.85rem; 
+                font-size: clamp(0.7rem, 2vw, 0.85rem); 
                 color: #555; 
                 font-weight: 600;
                 text-align: center;
+                word-wrap: break-word;
             }}
-            table {{ 
-                width: 100%; 
-                border-collapse: collapse; 
+            
+            /* Responsive table */
+            .table-container {{
+                overflow-x: auto;
                 margin-top: 1.5rem;
-                background: #fff;
                 border-radius: 12px;
-                overflow: hidden;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             }}
+            
+            table {{ 
+                width: 100%; 
+                min-width: 600px;
+                border-collapse: collapse; 
+                background: #fff;
+            }}
+            
             th, td {{ 
-                padding: 1rem; 
+                padding: clamp(0.6rem, 2vw, 1rem); 
                 border: 1px solid #e0e6ed; 
                 text-align: left; 
+                font-size: clamp(0.8rem, 2.5vw, 0.9rem);
             }}
+            
             th {{ 
                 background: linear-gradient(135deg, #3498db, #2980b9); 
                 color: white;
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
+                white-space: nowrap;
             }}
+            
             tr:nth-child(even) {{ background-color: #f8f9fa; }}
             tr:hover {{ background-color: #e3f2fd; }}
+            
             .nav-links {{
                 text-align: center;
-                margin: 2rem 0;
+                margin: clamp(1rem, 3vw, 2rem) 0;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                align-items: center;
             }}
+            
             .nav-links a {{
                 display: inline-block;
-                margin: 0 1rem;
-                padding: 0.75rem 1.5rem;
+                padding: clamp(0.6rem, 2.5vw, 0.75rem) clamp(1rem, 3vw, 1.5rem);
                 background: linear-gradient(45deg, #3498db, #2980b9);
                 color: white;
                 text-decoration: none;
@@ -465,36 +522,140 @@ def html_page(title: str, body: str) -> bytes:
                 font-weight: 600;
                 transition: all 0.3s ease;
                 box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+                font-size: clamp(0.9rem, 2.5vw, 1rem);
+                white-space: nowrap;
             }}
+            
             .nav-links a:hover {{
                 background: linear-gradient(45deg, #2980b9, #1f5f8b);
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
             }}
+            
             footer {{ 
                 margin-top: 3rem; 
-                font-size: 0.9rem; 
+                font-size: clamp(0.8rem, 2.5vw, 0.9rem); 
                 color: #7f8c8d; 
                 text-align: center;
                 padding: 1rem;
                 border-top: 1px solid #e0e6ed;
             }}
+            
             .score-display {{
-                font-size: 3rem;
+                font-size: clamp(2rem, 8vw, 3rem);
                 font-weight: 700;
                 text-align: center;
                 margin: 1rem 0;
                 text-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }}
+            
             .vector-display {{
                 background: #2c3e50;
                 color: #ecf0f1;
-                padding: 1rem;
+                padding: clamp(0.8rem, 2.5vw, 1rem);
                 border-radius: 8px;
                 font-family: 'Courier New', monospace;
-                font-size: 0.9rem;
+                font-size: clamp(0.8rem, 2.5vw, 0.9rem);
                 word-break: break-all;
                 margin: 1rem 0;
+                overflow-x: auto;
+            }}
+            
+            /* Mobile-specific improvements */
+            @media (max-width: 768px) {{
+                .container {{
+                    margin: 0.5rem;
+                    padding: 0.8rem;
+                    border-radius: 10px;
+                }}
+                
+                .kpi {{
+                    grid-template-columns: repeat(2, 1fr);
+                }}
+                
+                .chart-bar-container {{
+                    flex-direction: column;
+                    height: auto;
+                    align-items: stretch;
+                }}
+                
+                .chart-bar {{
+                    flex-direction: row;
+                    align-items: center;
+                    gap: 1rem;
+                    margin-bottom: 1rem;
+                }}
+                
+                .bar {{
+                    width: 100px;
+                    height: 20px;
+                    border-radius: 10px;
+                }}
+                
+                .bar-label {{
+                    margin-top: 0;
+                    text-align: left;
+                    flex: 1;
+                }}
+                
+                .nav-links {{
+                    flex-direction: column;
+                }}
+                
+                .nav-links a {{
+                    width: 100%;
+                    max-width: 250px;
+                }}
+                
+                button {{
+                    width: 100%;
+                    max-width: none;
+                }}
+            }}
+            
+            @media (max-width: 480px) {{
+                .kpi {{
+                    grid-template-columns: 1fr;
+                }}
+                
+                .kpi div {{
+                    padding: 1rem;
+                }}
+                
+                .chart-bar-container {{
+                    padding: 1rem;
+                }}
+                
+                .bar {{
+                    width: 60px;
+                }}
+                
+                .vector-display {{
+                    font-size: 0.75rem;
+                }}
+            }}
+            
+            /* Tablet improvements */
+            @media (min-width: 769px) and (max-width: 1024px) {{
+                .container {{
+                    max-width: 95%;
+                }}
+                
+                .kpi {{
+                    grid-template-columns: repeat(3, 1fr);
+                }}
+            }}
+            
+            /* Large screen improvements */
+            @media (min-width: 1025px) {{
+                .nav-links {{
+                    flex-direction: row;
+                    justify-content: center;
+                }}
+                
+                .nav-links a {{
+                    margin: 0 1rem;
+                }}
             }}
         </style>
     </head>
@@ -632,16 +793,20 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     </div>
     
     <h2>Vulnerability Details</h2>
-    <table>
-        <tr><th>Title</th><td>{title or '-'}</td></tr>
-        <tr><th>CVE ID</th><td>{cve_id or '-'}</td></tr>
-        <tr><th>Source</th><td>{source or '-'}</td></tr>
-    </table>
+    <div class="table-container">
+        <table>
+            <tr><th>Title</th><td>{title or '-'}</td></tr>
+            <tr><th>CVE ID</th><td>{cve_id or '-'}</td></tr>
+            <tr><th>Source</th><td>{source or '-'}</td></tr>
+        </table>
+    </div>
     
     <h2>CVSS Base Metrics</h2>
-    <table>
-        {rows}
-    </table>
+    <div class="table-container">
+        <table>
+            {rows}
+        </table>
+    </div>
     
     <div class="nav-links">
         <a href="/">&larr; Evaluate another vulnerability</a>
@@ -704,10 +869,12 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]]) -> 
     
     top_table = f"""
     <h2>Top Evaluations (by Base Score)</h2>
-    <table>
-        <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th></tr>
-        {rows if rows else '<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
-    </table>
+    <div class="table-container">
+        <table>
+            <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th></tr>
+            {rows if rows else '<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
+        </table>
+    </div>
     """
     
     dashboard_html = f"""
