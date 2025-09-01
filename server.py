@@ -1174,13 +1174,14 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
                             # Pre-fill form with detected values
                             detected_metrics = document_analysis['metrics']
                             for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
-                                if key not in form_data and key in detected_metrics:
+                                # Always use detected values if available, regardless of form_data
+                                if key in detected_metrics:
                                     form_data[key] = detected_metrics[key]
                             
                             # Pre-fill other fields
-                            if 'title' not in form_data and document_analysis.get('title'):
+                            if document_analysis.get('title'):
                                 form_data['title'] = document_analysis['title']
-                            if 'cve_id' not in form_data and document_analysis.get('cve_id'):
+                            if document_analysis.get('cve_id'):
                                 form_data['cve_id'] = document_analysis['cve_id']
                     except Exception as e:
                         document_analysis = {
