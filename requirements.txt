@@ -1,11 +1,8 @@
-# No external dependencies required - using only Python standard library
-# This file is needed for Render deployment
-# The application uses only built-in Python modules:
-# - http.server
-# - json
-# - sqlite3
-# - urllib.parse
-# - datetime
-# - pathlib
-# - typing
-# - math
+# Dependencies for document processing
+python-docx==0.8.11
+PyPDF2==3.0.1
+python-magic==0.4.27
+Pillow==10.0.1
+
+# Optional: for better text extraction
+pdfplumber==0.9.0

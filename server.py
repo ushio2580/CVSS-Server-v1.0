@@ -50,6 +50,8 @@ import json
 import os
 import sqlite3
 import urllib.parse
+import cgi
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -57,6 +59,7 @@ from typing import Any, Dict, List, Tuple
 try:
     # When running as part of the cvss_server package (e.g., `python -m cvss_server.server`)
     from .cvss import calculate_base_score  # type: ignore
+    from .document_processor import document_processor  # type: ignore
 except ImportError:
     # Fallback to absolute import when executed as a script (`python cvss_server/server.py`)
     import sys
@@ -67,10 +70,15 @@ except ImportError:
     sys.path.append(str(parent_dir.parent))
     try:
         from cvss_server.cvss import calculate_base_score  # type: ignore
+        from cvss_server.document_processor import document_processor  # type: ignore
     except ImportError:
         # As a last resort, import from relative path by adjusting sys.path again
         sys.path.append(str(parent_dir))
         from cvss import calculate_base_score  # type: ignore
+        try:
+            from document_processor import document_processor  # type: ignore
+        except ImportError:
+            document_processor = None
 
 
 # ---------------------------------------------------------------------------
@@ -685,13 +693,29 @@ def render_form() -> bytes:
     def options_html(options: List[Tuple[str, str]]) -> str:
         return "".join([f"<option value=\"{val}\">{label}</option>" for val, label in options])
 
+    # Document upload section
+    document_upload_section = ""
+    if document_processor:
+        document_upload_section = """
+        <h2>📄 Document Analysis (Optional)</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 1rem;">
+            Upload a Word (.docx) or PDF document to automatically extract CVSS metrics from the text.
+        </p>
+        <label for="document">Upload Document</label>
+        <input type="file" id="document" name="document" accept=".docx,.pdf" style="padding: 0.5rem; border: 2px dashed #3498db; border-radius: 8px; background: #f8f9fa;" />
+        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem;">
+            Supported formats: .docx, .pdf<br>
+            The system will analyze the document and pre-fill the CVSS metrics.
+        </p>
+        """
+
     form_html = f"""
     <h1>CVSS v3.1 Evaluation</h1>
     <p style="text-align: center; color: #7f8c8d; margin-bottom: 2rem;">
-        Enter the details of a vulnerability and select the appropriate CVSS v3.1 base metrics.
+        Enter the details of a vulnerability and select the appropriate CVSS v3.1 base metrics, or upload a document for automatic analysis.
     </p>
     
-    <form method="post" action="/evaluate">
+    <form method="post" action="/evaluate" enctype="multipart/form-data">
         <h2>Vulnerability Information</h2>
         <label for="title">Title / Description (optional)</label>
         <input type="text" id="title" name="title" placeholder="Example: Remote Code Execution in Module X" />
@@ -701,6 +725,8 @@ def render_form() -> bytes:
 
         <label for="source">Source (optional)</label>
         <input type="text" id="source" name="source" placeholder="Internal, NVD, etc." />
+
+        {document_upload_section}
 
         <h2>CVSS Base Metrics</h2>
         <label for="AV">Attack Vector (AV)</label>
@@ -753,7 +779,7 @@ def render_form() -> bytes:
     return html_page("CVSS Evaluation", form_html)
 
 
-def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str) -> bytes:
+def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str, document_analysis: Dict[str, any] = None) -> bytes:
     """Generate HTML showing the result of the evaluation."""
     # Compose human-readable summary of metrics
     metric_names = {
@@ -776,6 +802,53 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     # Get severity class for styling
     severity_class = f"severity-{severity.lower()}"
     
+    # Document analysis section
+    document_section = ""
+    if document_analysis and document_analysis.get('success'):
+        doc = document_analysis
+        document_section = f"""
+        <h2>📄 Document Analysis Results</h2>
+        <div class="result" style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border-left: 5px solid #28a745;">
+            <h3>📋 Extracted Information</h3>
+            <div class="table-container">
+                <table>
+                    <tr><th>Filename</th><td>{doc.get('filename', 'Unknown')}</td></tr>
+                    <tr><th>Detected Title</th><td>{doc.get('title', 'Not detected')}</td></tr>
+                    <tr><th>Detected CVE ID</th><td>{doc.get('cve_id', 'Not detected')}</td></tr>
+                </table>
+            </div>
+            
+            <h3>🔍 Detected CVSS Metrics</h3>
+            <div class="table-container">
+                <table>
+                    <tr><th>Metric</th><th>Detected Value</th><th>Description</th></tr>
+                    <tr><td>Attack Vector</td><td>{doc['metrics'].get('AV', 'N/A')}</td><td>{'Network' if doc['metrics'].get('AV') == 'N' else 'Adjacent' if doc['metrics'].get('AV') == 'A' else 'Local' if doc['metrics'].get('AV') == 'L' else 'Physical'}</td></tr>
+                    <tr><td>Attack Complexity</td><td>{doc['metrics'].get('AC', 'N/A')}</td><td>{'Low' if doc['metrics'].get('AC') == 'L' else 'High'}</td></tr>
+                    <tr><td>Privileges Required</td><td>{doc['metrics'].get('PR', 'N/A')}</td><td>{'None' if doc['metrics'].get('PR') == 'N' else 'Low' if doc['metrics'].get('PR') == 'L' else 'High'}</td></tr>
+                    <tr><td>User Interaction</td><td>{doc['metrics'].get('UI', 'N/A')}</td><td>{'None' if doc['metrics'].get('UI') == 'N' else 'Required'}</td></tr>
+                    <tr><td>Scope</td><td>{doc['metrics'].get('S', 'N/A')}</td><td>{'Unchanged' if doc['metrics'].get('S') == 'U' else 'Changed'}</td></tr>
+                    <tr><td>Confidentiality Impact</td><td>{doc['metrics'].get('C', 'N/A')}</td><td>{'None' if doc['metrics'].get('C') == 'N' else 'Low' if doc['metrics'].get('C') == 'L' else 'High'}</td></tr>
+                    <tr><td>Integrity Impact</td><td>{doc['metrics'].get('I', 'N/A')}</td><td>{'None' if doc['metrics'].get('I') == 'N' else 'Low' if doc['metrics'].get('I') == 'L' else 'High'}</td></tr>
+                    <tr><td>Availability Impact</td><td>{doc['metrics'].get('A', 'N/A')}</td><td>{'None' if doc['metrics'].get('A') == 'N' else 'Low' if doc['metrics'].get('A') == 'L' else 'High'}</td></tr>
+                </table>
+            </div>
+            
+            <h3>📝 Extracted Text (Preview)</h3>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9rem;">
+                {doc.get('text', 'No text extracted')}
+            </div>
+        </div>
+        """
+    elif document_analysis and not document_analysis.get('success'):
+        document_section = f"""
+        <h2>📄 Document Analysis Results</h2>
+        <div class="result" style="background: linear-gradient(135deg, #ffeaea, #f8d7da); border-left: 5px solid #dc3545;">
+            <h3>❌ Document Processing Error</h3>
+            <p><strong>Error:</strong> {document_analysis.get('error', 'Unknown error')}</p>
+            <p><strong>Filename:</strong> {document_analysis.get('filename', 'Unknown')}</p>
+        </div>
+        """
+
     result_html = f"""
     <h1>CVSS Evaluation Result</h1>
     
@@ -791,6 +864,8 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
             {vector}
         </div>
     </div>
+    
+    {document_section}
     
     <h2>Vulnerability Details</h2>
     <div class="table-container">
@@ -1042,13 +1117,91 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        # Read and parse form data
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length)
-        form = urllib.parse.parse_qs(post_data.decode("utf-8"))
+        
+        # Check if this is a multipart form (file upload)
+        content_type = self.headers.get("Content-Type", "")
+        document_analysis = None
+        
+        if "multipart/form-data" in content_type:
+            # Handle file upload
+            try:
+                # Parse multipart form data
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
+                
+                # Parse multipart data manually (simplified)
+                boundary = content_type.split("boundary=")[1]
+                parts = post_data.split(b"--" + boundary.encode())
+                
+                form_data = {}
+                uploaded_file = None
+                filename = None
+                
+                for part in parts:
+                    if b"Content-Disposition: form-data" in part:
+                        # Extract field name and value
+                        if b'name="' in part:
+                            name_start = part.find(b'name="') + 6
+                            name_end = part.find(b'"', name_start)
+                            field_name = part[name_start:name_end].decode()
+                            
+                            # Check if it's a file field
+                            if b'filename="' in part:
+                                # This is a file upload
+                                filename_start = part.find(b'filename="') + 10
+                                filename_end = part.find(b'"', filename_start)
+                                filename = part[filename_start:filename_end].decode()
+                                
+                                # Extract file content
+                                content_start = part.find(b'\r\n\r\n') + 4
+                                content_end = part.rfind(b'\r\n')
+                                if content_end > content_start:
+                                    file_content = part[content_start:content_end]
+                                    uploaded_file = file_content
+                            else:
+                                # This is a regular form field
+                                value_start = part.find(b'\r\n\r\n') + 4
+                                value_end = part.rfind(b'\r\n')
+                                if value_end > value_start:
+                                    field_value = part[value_start:value_end].decode()
+                                    form_data[field_name] = field_value
+                
+                # Process uploaded document if present
+                if uploaded_file and filename and document_processor:
+                    try:
+                        document_analysis = document_processor.process_document(uploaded_file, filename)
+                        if document_analysis.get('success'):
+                            # Pre-fill form with detected values
+                            detected_metrics = document_analysis['metrics']
+                            for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
+                                if key not in form_data and key in detected_metrics:
+                                    form_data[key] = detected_metrics[key]
+                            
+                            # Pre-fill other fields
+                            if 'title' not in form_data and document_analysis.get('title'):
+                                form_data['title'] = document_analysis['title']
+                            if 'cve_id' not in form_data and document_analysis.get('cve_id'):
+                                form_data['cve_id'] = document_analysis['cve_id']
+                    except Exception as e:
+                        document_analysis = {
+                            'success': False,
+                            'error': str(e),
+                            'filename': filename
+                        }
+                
+            except Exception as e:
+                # Fallback to regular form processing
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
+                form_data = urllib.parse.parse_qs(post_data.decode("utf-8"))
+        else:
+            # Regular form data (no file upload)
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            form_data = urllib.parse.parse_qs(post_data.decode("utf-8"))
 
         def get_value(key: str) -> str:
-            return form.get(key, [""])[0]
+            return form_data.get(key, [""])[0]
 
         # Extract metrics and metadata
         metrics = {}
@@ -1073,6 +1226,7 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             base_score,
             severity,
             vector,
+            document_analysis
         )
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
