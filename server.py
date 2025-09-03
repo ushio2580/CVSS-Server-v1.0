@@ -703,16 +703,16 @@ def render_form() -> bytes:
         </p>
         
         <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 1px solid #28a745; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h3 style="color: #155724; margin-top: 0;">📋 Document Template & Examples</h3>
+            <h3 style="color: #155724; margin-top: 0;">📋 Document Examples & Guide</h3>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
-                    <h4 style="color: #155724;">📥 Download Template</h4>
-                    <a href="/download-template" class="template-download-btn" download>
-                        📄 CVSS Analysis Template.docx
+                    <h4 style="color: #155724;">📥 Download Example</h4>
+                    <a href="/download-example" class="template-download-btn" download>
+                        📄 CVSS Analysis Example.pdf
                     </a>
                     <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
-                        Word template with proper structure
+                        PDF example with proper structure
                     </p>
                 </div>
                 
@@ -1166,77 +1166,76 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
     
-    def generate_cvss_template(self) -> bytes:
-        """Generate a Word document template for CVSS analysis."""
-        # For now, return a simple text file that users can copy to Word
-        # In a full implementation, you'd use python-docx to create a real .docx file
+    def generate_cvss_example_pdf(self) -> bytes:
+        """Generate a PDF example document for CVSS analysis."""
+        # Create a simple PDF-like structure using text formatting
+        # In a full implementation, you'd use a library like reportlab or fpdf
         
-        template_text = """CVSS Analysis Template
-========================
+        example_text = """CVSS Analysis Example Document
+===============================
 
 VULNERABILITY TITLE
 ==================
-[Enter a descriptive title for the vulnerability]
+Remote Code Execution in Web Application
 
 CVE ID
 ======
-[Enter CVE ID if available, e.g., CVE-2024-12345]
+CVE-2024-12345
 
 DESCRIPTION
 ===========
-[Describe the vulnerability in detail, including:
-- How the attack works
-- What systems are affected
-- What the impact is]
+This critical vulnerability allows remote attackers to execute arbitrary code 
+over the network without requiring any user interaction. The attack complexity 
+is low and requires no privileges. The vulnerability has high impact on 
+confidentiality, integrity, and availability.
 
 TECHNICAL DETAILS
 =================
-[Include specific details that help determine CVSS metrics:]
+Attack Vector: Network
+- The vulnerability is accessible over the network
+- Attackers can exploit this remotely without physical access
+- No local system access is required
 
-Attack Vector:
-- Is this a network-based attack? (Use terms: "network", "remote", "over network")
-- Is it local to the system? (Use terms: "local", "on system", "requires local access")
-- Is it adjacent network? (Use terms: "adjacent", "same network", "local network")
-- Is physical access required? (Use terms: "physical", "physical access")
+Attack Complexity: Low
+- The attack is simple to execute
+- Exploitation requires minimal technical skill
+- No complex conditions need to be met
 
-Attack Complexity:
-- Is it easy to exploit? (Use terms: "low complexity", "simple", "easy", "trivial")
-- Is it difficult to exploit? (Use terms: "high complexity", "complex", "difficult")
+Privileges Required: None
+- No authentication is required
+- No user privileges are needed
+- Attackers can exploit this anonymously
 
-Privileges Required:
-- No privileges needed? (Use terms: "no privileges", "unprivileged", "no authentication")
-- Basic user privileges? (Use terms: "low privileges", "basic user", "user level")
-- Admin privileges needed? (Use terms: "high privileges", "admin", "root", "elevated")
+User Interaction: None
+- No user action is required
+- The attack can be executed automatically
+- Users don't need to click or interact
 
-User Interaction:
-- No user interaction? (Use terms: "no user interaction", "automatic", "no user action")
-- User interaction required? (Use terms: "requires user interaction", "user must click", "user action")
+Scope: Changed
+- The vulnerability affects different components
+- Exploitation impacts other parts of the system
+- The scope extends beyond the vulnerable component
 
-Scope:
-- Affects same component? (Use terms: "unchanged scope", "same component", "within component")
-- Affects different components? (Use terms: "changed scope", "different component", "cross component")
+Impact Assessment:
+- Confidentiality: High - Complete data disclosure is possible
+- Integrity: High - Data can be completely modified
+- Availability: High - Service disruption is complete
 
-Impact:
-- Confidentiality: (Use terms: "no data disclosure", "minor data leak", "complete data disclosure")
-- Integrity: (Use terms: "no data modification", "minor data modification", "complete data modification")
-- Availability: (Use terms: "no service disruption", "minor service disruption", "complete service disruption")
-
-CVSS METRICS SUMMARY
-====================
-[After writing the description, summarize the detected metrics:]
-
-Attack Vector: [N/A/L/P]
-Attack Complexity: [L/H]
-Privileges Required: [N/L/H]
-User Interaction: [N/R]
-Scope: [U/C]
-Confidentiality Impact: [N/L/H]
-Integrity Impact: [N/L/H]
-Availability Impact: [N/L/H]
+CVSS METRICS DETECTED
+======================
+Attack Vector: N (Network)
+Attack Complexity: L (Low)
+Privileges Required: N (None)
+User Interaction: N (None)
+Scope: C (Changed)
+Confidentiality Impact: H (High)
+Integrity Impact: H (High)
+Availability Impact: H (High)
 
 EXPECTED RESULT
 ==============
-[The system will automatically calculate the CVSS score based on your description]
+Base Score: 9.8 (Critical)
+Vector String: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
 
 TIPS FOR BETTER DETECTION
 =========================
@@ -1255,9 +1254,15 @@ EXAMPLE PHRASES THAT WORK WELL:
 - "The scope is changed and affects different components"
 - "This results in complete data disclosure"
 - "The vulnerability has high impact on confidentiality, integrity, and availability"
+
+This document demonstrates the proper structure and terminology needed for 
+accurate CVSS metric detection. Copy this format and modify the content 
+for your specific vulnerability analysis.
 """
         
-        return template_text.encode('utf-8')
+        # For now, return the text as bytes (in a real implementation, this would be actual PDF content)
+        # Users can copy this text and create their own documents
+        return example_text.encode('utf-8')
 
     def do_GET(self) -> None:
         """Handle GET requests based on the request path."""
@@ -1354,15 +1359,15 @@ EXAMPLE PHRASES THAT WORK WELL:
             self.send_header("Content-Length", str(len(csv_data)))
             self.end_headers()
             self.wfile.write(csv_data)
-        elif path == "/download-template":
-            # Download CVSS analysis template
-            template_content = self.generate_cvss_template()
+        elif path == "/download-example":
+            # Download CVSS analysis example PDF
+            pdf_content = self.generate_cvss_example_pdf()
             self.send_response(200)
-            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-            self.send_header("Content-Disposition", "attachment; filename=CVSS_Analysis_Template.docx")
-            self.send_header("Content-Length", str(len(template_content)))
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", "attachment; filename=CVSS_Analysis_Example.pdf")
+            self.send_header("Content-Length", str(len(pdf_content)))
             self.end_headers()
-            self.wfile.write(template_content)
+            self.wfile.write(pdf_content)
         else:
             # Not found
             self.send_response(404)
