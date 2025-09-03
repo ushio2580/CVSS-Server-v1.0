@@ -703,28 +703,16 @@ def render_form() -> bytes:
         </p>
         
         <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 1px solid #28a745; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h3 style="color: #155724; margin-top: 0;">📋 Document Examples & Guide</h3>
+            <h3 style="color: #155724; margin-top: 0;">📋 Document Analysis Guide</h3>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <h4 style="color: #155724;">📥 Download Example</h4>
-                    <a href="/download-example" class="template-download-btn" download>
-                        📄 CVSS Analysis Example.pdf
-                    </a>
-                    <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
-                        PDF example with proper structure
-                    </p>
-                </div>
-                
-                <div>
-                    <h4 style="color: #155724;">📖 View Example</h4>
-                    <button type="button" onclick="showExample()" class="example-btn">
-                        👁️ Show Example Document
-                    </button>
-                    <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
-                        See how to structure your document
-                    </p>
-                </div>
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <h4 style="color: #155724; margin-bottom: 1rem;">📖 View Example Document</h4>
+                <button type="button" onclick="showExample()" class="example-btn">
+                    👁️ Show Example Document
+                </button>
+                <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
+                    See how to structure your document for better CVSS metric detection
+                </p>
             </div>
             
             <div style="background: #fff; border-radius: 8px; padding: 1rem; border-left: 4px solid #28a745;">
@@ -789,23 +777,27 @@ def render_form() -> bytes:
         </div>
         
         <style>
-        .template-download-btn, .example-btn {
+        .example-btn {
             display: inline-block;
-            padding: 0.75rem 1.5rem;
+            padding: 1rem 2rem;
             background: linear-gradient(45deg, #28a745, #20c997);
             color: white;
             text-decoration: none;
-            border-radius: 8px;
+            border: none;
+            border-radius: 12px;
             font-weight: 600;
+            font-size: 1.1rem;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
             text-align: center;
+            cursor: pointer;
+            min-width: 200px;
         }
         
-        .template-download-btn:hover, .example-btn:hover {
+        .example-btn:hover {
             background: linear-gradient(45deg, #20c997, #17a2b8);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
         }
         
         .modal {
