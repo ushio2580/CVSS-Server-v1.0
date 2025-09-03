@@ -701,12 +701,173 @@ def render_form() -> bytes:
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 1rem;">
             Upload a Word (.docx) or PDF document to automatically extract CVSS metrics from the text.
         </p>
+        
+        <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 1px solid #28a745; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="color: #155724; margin-top: 0;">📋 Document Template & Examples</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <h4 style="color: #155724;">📥 Download Template</h4>
+                    <a href="/download-template" class="template-download-btn" download>
+                        📄 CVSS Analysis Template.docx
+                    </a>
+                    <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
+                        Word template with proper structure
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 style="color: #155724;">📖 View Example</h4>
+                    <button type="button" onclick="showExample()" class="example-btn">
+                        👁️ Show Example Document
+                    </button>
+                    <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
+                        See how to structure your document
+                    </p>
+                </div>
+            </div>
+            
+            <div style="background: #fff; border-radius: 8px; padding: 1rem; border-left: 4px solid #28a745;">
+                <h4 style="color: #155724; margin-top: 0;">💡 Tips for Better Detection:</h4>
+                <ul style="color: #155724; margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li><strong>Use clear terms:</strong> "network attack", "low complexity", "no privileges"</li>
+                    <li><strong>Include CVE ID:</strong> CVE-2024-12345 format</li>
+                    <li><strong>Describe impact clearly:</strong> "high impact on confidentiality"</li>
+                    <li><strong>Mention scope:</strong> "affects different components" or "within same component"</li>
+                </ul>
+            </div>
+        </div>
+        
         <label for="document">Upload Document</label>
-        <input type="file" id="document" name="document" accept=".docx,.pdf" style="padding: 0.5rem; border: 2px dashed #3498db; border-radius: 8px; background: #f8f9fa;" />
+        <input type="file" id="document" name="document" accept=".docx,.pdf" style="padding: 0.5rem; border: 2px solid #3498db; border-radius: 8px; background: #f8f9fa;" />
         <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem;">
             Supported formats: .docx, .pdf<br>
             The system will analyze the document and pre-fill the CVSS metrics.
         </p>
+        
+        <!-- Example Document Modal -->
+        <div id="exampleModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeExample()">&times;</span>
+                <h2>📄 Example Document Structure</h2>
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.9rem; line-height: 1.6; max-height: 400px; overflow-y: auto;">
+                    <strong>Vulnerability Report: Remote Code Execution</strong><br><br>
+                    
+                    <strong>CVE ID:</strong> CVE-2024-12345<br><br>
+                    
+                    <strong>DESCRIPTION:</strong><br>
+                    This critical vulnerability allows remote attackers to execute arbitrary 
+                    code over the network without requiring any user interaction. The attack 
+                    complexity is low and requires no privileges. The vulnerability has high 
+                    impact on confidentiality, integrity, and availability.<br><br>
+                    
+                    <strong>TECHNICAL DETAILS:</strong><br>
+                    - The vulnerability is network accessible<br>
+                    - Attack complexity is low and simple to exploit<br>
+                    - No privileges are required for exploitation<br>
+                    - No user interaction is needed<br>
+                    - Scope is changed (affects different components)<br>
+                    - Complete data disclosure is possible<br>
+                    - Data modification can occur<br>
+                    - Service disruption is complete<br><br>
+                    
+                    <strong>CVSS METRICS:</strong><br>
+                    Attack Vector: Network<br>
+                    Attack Complexity: Low<br>
+                    Privileges Required: None<br>
+                    User Interaction: None<br>
+                    Scope: Changed<br>
+                    Confidentiality Impact: High<br>
+                    Integrity Impact: High<br>
+                    Availability Impact: High<br><br>
+                    
+                    <strong>EXPECTED RESULT:</strong><br>
+                    Base Score: 9.8 (Critical)<br>
+                    Vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+                </div>
+            </div>
+        </div>
+        
+        <style>
+        .template-download-btn, .example-btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            text-align: center;
+        }
+        
+        .template-download-btn:hover, .example-btn:hover {
+            background: linear-gradient(45deg, #20c997, #17a2b8);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+                padding: 1rem;
+            }
+        }
+        </style>
+        
+        <script>
+        function showExample() {
+            document.getElementById('exampleModal').style.display = 'block';
+        }
+        
+        function closeExample() {
+            document.getElementById('exampleModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            var modal = document.getElementById('exampleModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        </script>
         """
 
     form_html = f"""
