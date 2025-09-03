@@ -1004,6 +1004,99 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+    
+    def generate_cvss_template(self) -> bytes:
+        """Generate a Word document template for CVSS analysis."""
+        # For now, return a simple text file that users can copy to Word
+        # In a full implementation, you'd use python-docx to create a real .docx file
+        
+        template_text = """CVSS Analysis Template
+========================
+
+VULNERABILITY TITLE
+==================
+[Enter a descriptive title for the vulnerability]
+
+CVE ID
+======
+[Enter CVE ID if available, e.g., CVE-2024-12345]
+
+DESCRIPTION
+===========
+[Describe the vulnerability in detail, including:
+- How the attack works
+- What systems are affected
+- What the impact is]
+
+TECHNICAL DETAILS
+=================
+[Include specific details that help determine CVSS metrics:]
+
+Attack Vector:
+- Is this a network-based attack? (Use terms: "network", "remote", "over network")
+- Is it local to the system? (Use terms: "local", "on system", "requires local access")
+- Is it adjacent network? (Use terms: "adjacent", "same network", "local network")
+- Is physical access required? (Use terms: "physical", "physical access")
+
+Attack Complexity:
+- Is it easy to exploit? (Use terms: "low complexity", "simple", "easy", "trivial")
+- Is it difficult to exploit? (Use terms: "high complexity", "complex", "difficult")
+
+Privileges Required:
+- No privileges needed? (Use terms: "no privileges", "unprivileged", "no authentication")
+- Basic user privileges? (Use terms: "low privileges", "basic user", "user level")
+- Admin privileges needed? (Use terms: "high privileges", "admin", "root", "elevated")
+
+User Interaction:
+- No user interaction? (Use terms: "no user interaction", "automatic", "no user action")
+- User interaction required? (Use terms: "requires user interaction", "user must click", "user action")
+
+Scope:
+- Affects same component? (Use terms: "unchanged scope", "same component", "within component")
+- Affects different components? (Use terms: "changed scope", "different component", "cross component")
+
+Impact:
+- Confidentiality: (Use terms: "no data disclosure", "minor data leak", "complete data disclosure")
+- Integrity: (Use terms: "no data modification", "minor data modification", "complete data modification")
+- Availability: (Use terms: "no service disruption", "minor service disruption", "complete service disruption")
+
+CVSS METRICS SUMMARY
+====================
+[After writing the description, summarize the detected metrics:]
+
+Attack Vector: [N/A/L/P]
+Attack Complexity: [L/H]
+Privileges Required: [N/L/H]
+User Interaction: [N/R]
+Scope: [U/C]
+Confidentiality Impact: [N/L/H]
+Integrity Impact: [N/L/H]
+Availability Impact: [N/L/H]
+
+EXPECTED RESULT
+==============
+[The system will automatically calculate the CVSS score based on your description]
+
+TIPS FOR BETTER DETECTION
+=========================
+1. Use clear, specific terms from the CVSS specification
+2. Avoid ambiguous language like "medium" or "some"
+3. Include technical details about the attack method
+4. Describe the impact clearly and specifically
+5. Mention the scope of the vulnerability
+6. Use consistent terminology throughout
+
+EXAMPLE PHRASES THAT WORK WELL:
+- "This vulnerability allows remote attackers to execute code over the network"
+- "The attack complexity is low and simple to exploit"
+- "No privileges are required for exploitation"
+- "No user interaction is needed"
+- "The scope is changed and affects different components"
+- "This results in complete data disclosure"
+- "The vulnerability has high impact on confidentiality, integrity, and availability"
+"""
+        
+        return template_text.encode('utf-8')
 
     def do_GET(self) -> None:
         """Handle GET requests based on the request path."""
@@ -1100,6 +1193,15 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(csv_data)))
             self.end_headers()
             self.wfile.write(csv_data)
+        elif path == "/download-template":
+            # Download CVSS analysis template
+            template_content = self.generate_cvss_template()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            self.send_header("Content-Disposition", "attachment; filename=CVSS_Analysis_Template.docx")
+            self.send_header("Content-Length", str(len(template_content)))
+            self.end_headers()
+            self.wfile.write(template_content)
         else:
             # Not found
             self.send_response(404)
