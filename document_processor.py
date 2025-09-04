@@ -68,9 +68,9 @@ class DocumentProcessor:
                 'H': [r'\bhigh\s+integrity\s+impact\b', r'\bcomplete\s+data\s+modification\b', r'\bhigh\s+impact\b', r'\bcomplete\b', r'\bhigh\b']
             },
             'A': {
-                'N': [r'\bno\s+availability\s+impact\b', r'\bno\s+service\s+disruption\b', r'\bno\s+impact\b', r'\bnone\b', r'\bno\s+service\s+disruption\b'],
-                'L': [r'\blow\s+availability\s+impact\b', r'\bminor\s+service\s+disruption\b', r'\blow\s+impact\b', r'\bminor\b'],
-                'H': [r'\bhigh\s+availability\s+impact\b', r'\bcomplete\s+service\s+disruption\b', r'\bhigh\s+impact\b', r'\bcomplete\b', r'\bhigh\b']
+                'N': [r'\bno\s+availability\s+impact\b', r'\bno\s+service\s+disruption\b', r'\bno\s+availability\b', r'\bnone\b', r'\bno\s+service\s+disruption\b'],
+                'L': [r'\blow\s+availability\s+impact\b', r'\bminor\s+service\s+disruption\b', r'\blow\s+availability\b', r'\bminor\b'],
+                'H': [r'\bhigh\s+availability\s+impact\b', r'\bcomplete\s+service\s+disruption\b', r'\bhigh\s+availability\b', r'\bcomplete\b', r'\bhigh\b', r'\bhigh\s+availability\b']
             }
         }
     
@@ -132,19 +132,24 @@ class DocumentProcessor:
         # Debug: Print the text being analyzed
         print(f"🔍 DEBUG - Analyzing text: {text_lower[:300]}...")
         
-        # Detect each metric
+        # Detect each metric with priority (H > L > N)
         for metric, values in self.cvss_patterns.items():
             detected = False
             
-            for value, patterns in values.items():
-                for pattern in patterns:
-                    if re.search(pattern, text_lower, re.IGNORECASE):
-                        detected_metrics[metric] = value
-                        print(f"✅ {metric}: {value} (pattern: {pattern})")
-                        detected = True
+            # Check patterns in priority order: High first, then Low, then None
+            priority_order = ['H', 'L', 'N'] if metric in ['C', 'I', 'A'] else ['N', 'A', 'L', 'P'] if metric == 'AV' else ['L', 'H'] if metric == 'AC' else ['N', 'L', 'H'] if metric == 'PR' else ['N', 'R'] if metric == 'UI' else ['U', 'C']
+            
+            for value in priority_order:
+                if value in values:
+                    patterns = values[value]
+                    for pattern in patterns:
+                        if re.search(pattern, text_lower, re.IGNORECASE):
+                            detected_metrics[metric] = value
+                            print(f"✅ {metric}: {value} (pattern: {pattern})")
+                            detected = True
+                            break
+                    if detected:
                         break
-                if detected:
-                    break
             
             if not detected:
                 print(f"❌ {metric}: No pattern matched")
