@@ -1433,10 +1433,17 @@ for your specific vulnerability analysis.
                         if document_analysis.get('success'):
                             # Pre-fill form with detected values
                             detected_metrics = document_analysis['metrics']
+                            print(f"🔍 DEBUG - Document metrics detected: {detected_metrics}")
+                            
                             for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
                                 # Always use detected values if available, regardless of form_data
                                 if key in detected_metrics:
                                     form_data[key] = detected_metrics[key]
+                                    print(f"✅ DEBUG - Set {key} = {detected_metrics[key]}")
+                                else:
+                                    print(f"❌ DEBUG - No detection for {key}")
+                            
+                            print(f"🔍 DEBUG - Final form_data: {form_data}")
                             
                             # Pre-fill other fields
                             if document_analysis.get('title'):
@@ -1444,6 +1451,7 @@ for your specific vulnerability analysis.
                             if document_analysis.get('cve_id'):
                                 form_data['cve_id'] = document_analysis['cve_id']
                     except Exception as e:
+                        print(f"❌ DEBUG - Error processing document: {e}")
                         document_analysis = {
                             'success': False,
                             'error': str(e),
@@ -1468,9 +1476,13 @@ for your specific vulnerability analysis.
         metrics = {}
         for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
             metrics[key] = get_value(key)
+            print(f"🔍 DEBUG - Final metric {key}: {metrics[key]}")
+        
         title = get_value("title").strip()
         cve_id = get_value("cve_id").strip()
         source = get_value("source").strip()
+        
+        print(f"🔍 DEBUG - Final metrics for calculation: {metrics}")
 
         # Compute base score
         base_score, severity, vector = calculate_base_score(metrics)
