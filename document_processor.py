@@ -28,49 +28,49 @@ class DocumentProcessor:
     
     def __init__(self):
         self.cvss_patterns = {
-            # Attack Vector patterns
+            # Attack Vector patterns - Más flexibles
             'AV': {
-                'N': [r'\bnetwork\b', r'\bremote\b', r'\bover\s+network\b', r'\bnetwork\s+accessible\b'],
+                'N': [r'\bnetwork\b', r'\bremote\b', r'\bover\s+network\b', r'\bnetwork\s+accessible\b', r'\bnetwork\s+based\b'],
                 'A': [r'\badjacent\b', r'\bsame\s+network\b', r'\blocal\s+network\b', r'\bsubnet\b'],
-                'L': [r'\blocal\b', r'\bon\s+system\b', r'\brequires\s+local\s+access\b'],
+                'L': [r'\blocal\b', r'\bon\s+system\b', r'\brequires\s+local\s+access\b', r'\blocal\s+access\b'],
                 'P': [r'\bphysical\b', r'\bphysical\s+access\b', r'\brequires\s+physical\s+access\b']
             },
-            # Attack Complexity patterns
+            # Attack Complexity patterns - Más flexibles
             'AC': {
-                'L': [r'\blow\s+complexity\b', r'\bsimple\b', r'\beasy\b', r'\btrivial\b'],
-                'H': [r'\bhigh\s+complexity\b', r'\bcomplex\b', r'\bdifficult\b', r'\brequires\s+special\b']
+                'L': [r'\blow\s+complexity\b', r'\bsimple\b', r'\beasy\b', r'\btrivial\b', r'\blow\b', r'\bsimple\s+to\s+exploit\b'],
+                'H': [r'\bhigh\s+complexity\b', r'\bcomplex\b', r'\bdifficult\b', r'\brequires\s+special\b', r'\bhigh\b']
             },
-            # Privileges Required patterns
+            # Privileges Required patterns - Más flexibles
             'PR': {
-                'N': [r'\bno\s+privileges\b', r'\bunprivileged\b', r'\bno\s+authentication\b'],
-                'L': [r'\blow\s+privileges\b', r'\bbasic\s+user\b', r'\buser\s+level\b'],
-                'H': [r'\bhigh\s+privileges\b', r'\badmin\b', r'\broot\b', r'\belevated\b']
+                'N': [r'\bno\s+privileges\b', r'\bunprivileged\b', r'\bno\s+authentication\b', r'\bno\s+privileges\s+required\b', r'\bno\s+privileges\s+needed\b'],
+                'L': [r'\blow\s+privileges\b', r'\bbasic\s+user\b', r'\buser\s+level\b', r'\blow\b'],
+                'H': [r'\bhigh\s+privileges\b', r'\badmin\b', r'\broot\b', r'\belevated\b', r'\bhigh\b']
             },
-            # User Interaction patterns
+            # User Interaction patterns - Más flexibles
             'UI': {
-                'N': [r'\bno\s+user\s+interaction\b', r'\bautomatic\b', r'\bno\s+user\s+action\b'],
-                'R': [r'\brequires\s+user\s+interaction\b', r'\buser\s+must\s+click\b', r'\buser\s+action\b']
+                'N': [r'\bno\s+user\s+interaction\b', r'\bautomatic\b', r'\bno\s+user\s+action\b', r'\bno\s+user\s+interaction\s+required\b', r'\bno\s+user\s+interaction\s+needed\b'],
+                'R': [r'\brequires\s+user\s+interaction\b', r'\buser\s+must\s+click\b', r'\buser\s+action\b', r'\buser\s+interaction\s+required\b']
             },
-            # Scope patterns
+            # Scope patterns - Más flexibles
             'S': {
-                'U': [r'\bunchanged\s+scope\b', r'\bsame\s+component\b', r'\bwithin\s+component\b'],
-                'C': [r'\bchanged\s+scope\b', r'\bdifferent\s+component\b', r'\bcross\s+component\b']
+                'U': [r'\bunchanged\s+scope\b', r'\bsame\s+component\b', r'\bwithin\s+component\b', r'\bunchanged\b', r'\bsame\s+component\b'],
+                'C': [r'\bchanged\s+scope\b', r'\bdifferent\s+component\b', r'\bcross\s+component\b', r'\bchanged\b', r'\bdifferent\s+component\b']
             },
-            # Impact patterns
+            # Impact patterns - Más flexibles
             'C': {
-                'N': [r'\bno\s+confidentiality\s+impact\b', r'\bno\s+data\s+disclosure\b'],
-                'L': [r'\blow\s+confidentiality\s+impact\b', r'\bminor\s+data\s+leak\b'],
-                'H': [r'\bhigh\s+confidentiality\s+impact\b', r'\bcomplete\s+data\s+disclosure\b']
+                'N': [r'\bno\s+confidentiality\s+impact\b', r'\bno\s+data\s+disclosure\b', r'\bno\s+impact\b', r'\bnone\b', r'\bno\s+data\s+leak\b'],
+                'L': [r'\blow\s+confidentiality\s+impact\b', r'\bminor\s+data\s+leak\b', r'\blow\s+impact\b', r'\bminor\b'],
+                'H': [r'\bhigh\s+confidentiality\s+impact\b', r'\bcomplete\s+data\s+disclosure\b', r'\bhigh\s+impact\b', r'\bcomplete\b', r'\bhigh\b']
             },
             'I': {
-                'N': [r'\bno\s+integrity\s+impact\b', r'\bno\s+data\s+modification\b'],
-                'L': [r'\blow\s+integrity\s+impact\b', r'\bminor\s+data\s+modification\b'],
-                'H': [r'\bhigh\s+integrity\s+impact\b', r'\bcomplete\s+data\s+modification\b']
+                'N': [r'\bno\s+integrity\s+impact\b', r'\bno\s+data\s+modification\b', r'\bno\s+impact\b', r'\bnone\b', r'\bno\s+data\s+modification\b'],
+                'L': [r'\blow\s+integrity\s+impact\b', r'\bminor\s+data\s+modification\b', r'\blow\s+impact\b', r'\bminor\b'],
+                'H': [r'\bhigh\s+integrity\s+impact\b', r'\bcomplete\s+data\s+modification\b', r'\bhigh\s+impact\b', r'\bcomplete\b', r'\bhigh\b']
             },
             'A': {
-                'N': [r'\bno\s+availability\s+impact\b', r'\bno\s+service\s+disruption\b'],
-                'L': [r'\blow\s+availability\s+impact\b', r'\bminor\s+service\s+disruption\b'],
-                'H': [r'\bhigh\s+availability\s+impact\b', r'\bcomplete\s+service\s+disruption\b']
+                'N': [r'\bno\s+availability\s+impact\b', r'\bno\s+service\s+disruption\b', r'\bno\s+impact\b', r'\bnone\b', r'\bno\s+service\s+disruption\b'],
+                'L': [r'\blow\s+availability\s+impact\b', r'\bminor\s+service\s+disruption\b', r'\blow\s+impact\b', r'\bminor\b'],
+                'H': [r'\bhigh\s+availability\s+impact\b', r'\bcomplete\s+service\s+disruption\b', r'\bhigh\s+impact\b', r'\bcomplete\b', r'\bhigh\b']
             }
         }
     
@@ -129,32 +129,27 @@ class DocumentProcessor:
         text_lower = text.lower()
         detected_metrics = {}
         
-        # Initialize with default values
-        default_metrics = {
-            'AV': 'L', 'AC': 'H', 'PR': 'N', 'UI': 'N', 
-            'S': 'U', 'C': 'N', 'I': 'N', 'A': 'N'
-        }
+        # Debug: Print the text being analyzed
+        print(f"🔍 DEBUG - Analyzing text: {text_lower[:300]}...")
         
         # Detect each metric
         for metric, values in self.cvss_patterns.items():
-            best_match = None
-            max_matches = 0
+            detected = False
             
             for value, patterns in values.items():
-                matches = 0
                 for pattern in patterns:
                     if re.search(pattern, text_lower, re.IGNORECASE):
-                        matches += 1
-                
-                if matches > max_matches:
-                    max_matches = matches
-                    best_match = value
+                        detected_metrics[metric] = value
+                        print(f"✅ {metric}: {value} (pattern: {pattern})")
+                        detected = True
+                        break
+                if detected:
+                    break
             
-            if best_match:
-                detected_metrics[metric] = best_match
-            else:
-                detected_metrics[metric] = default_metrics[metric]
+            if not detected:
+                print(f"❌ {metric}: No pattern matched")
         
+        print(f"🔍 DEBUG - Final metrics: {detected_metrics}")
         return detected_metrics
     
     def extract_cve_id(self, text: str) -> Optional[str]:
