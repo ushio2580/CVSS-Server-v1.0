@@ -52,9 +52,11 @@ import sqlite3
 import urllib.parse
 import cgi
 import tempfile
+import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+from auth import AuthManager
 
 try:
     # When running as part of the cvss_server package (e.g., `python -m cvss_server.server`)
@@ -143,6 +145,7 @@ def insert_evaluation(
     vector: str,
     base_score: float,
     severity: str,
+    user_id: int = None,
 ) -> int:
     """Insert a new evaluation record into the database.
 
@@ -167,8 +170,8 @@ def insert_evaluation(
         cur.execute(
             """
             INSERT INTO evaluations
-                (title, cve_id, source, metrics_json, vector, base_score, severity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (title, cve_id, source, metrics_json, vector, base_score, severity, created_at, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 title or "",
@@ -179,6 +182,7 @@ def insert_evaluation(
                 base_score,
                 severity,
                 created_at,
+                user_id,
             ),
         )
         conn.commit()
@@ -222,7 +226,7 @@ def fetch_evaluation_by_id(db_path: Path, eval_id: int) -> Dict[str, Any]:
         conn.close()
 
 
-def summary_counts_and_top(db_path: Path, top_n: int = 10) -> Tuple[Dict[str, int], List[Dict[str, Any]]]:
+def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) -> Tuple[Dict[str, int], List[Dict[str, Any]]]:
     """Compute counts per severity and return the top N records by score.
 
     Args:
@@ -238,21 +242,38 @@ def summary_counts_and_top(db_path: Path, top_n: int = 10) -> Tuple[Dict[str, in
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.cursor()
-        # Count by severity
-        cur.execute(
-            "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
-        )
+        # Count by severity (filter by user if provided)
+        if user_id:
+            cur.execute(
+                "SELECT severity, COUNT(*) as count FROM evaluations WHERE user_id = ? GROUP BY severity",
+                (user_id,)
+            )
+        else:
+            cur.execute(
+                "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
+            )
         counts = {row["severity"]: row["count"] for row in cur.fetchall()}
 
-        # Get top N by base_score descending
-        cur.execute(
-            """
-            SELECT * FROM evaluations
-            ORDER BY base_score DESC, created_at DESC
-            LIMIT ?
-            """,
-            (top_n,),
-        )
+        # Get top N by base_score descending (filter by user if provided)
+        if user_id:
+            cur.execute(
+                """
+                SELECT * FROM evaluations
+                WHERE user_id = ?
+                ORDER BY base_score DESC, created_at DESC
+                LIMIT ?
+                """,
+                (user_id, top_n),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT * FROM evaluations
+                ORDER BY base_score DESC, created_at DESC
+                LIMIT ?
+                """,
+                (top_n,),
+            )
         rows = cur.fetchall()
         top_list: List[Dict[str, Any]] = []
         for row in rows:
@@ -665,6 +686,47 @@ def html_page(title: str, body: str) -> bytes:
                     margin: 0 1rem;
                 }}
             }}
+            
+            /* User info styles */
+            .user-info {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 1rem;
+                border-radius: 10px;
+                margin-bottom: 1.5rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            }}
+            
+            .user-info span {{
+                font-size: 1rem;
+            }}
+            
+            .logout-btn {{
+                background: rgba(255,255,255,0.2);
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
+                text-decoration: none;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                border: 1px solid rgba(255,255,255,0.3);
+            }}
+            
+            .logout-btn:hover {{
+                background: rgba(255,255,255,0.3);
+                transform: translateY(-1px);
+            }}
+            
+            @media (max-width: 768px) {{
+                .user-info {{
+                    flex-direction: column;
+                    gap: 1rem;
+                    text-align: center;
+                }}
+            }}
         </style>
     </head>
     <body>
@@ -680,7 +742,7 @@ def html_page(title: str, body: str) -> bytes:
     return html.encode("utf-8")
 
 
-def render_form() -> bytes:
+def render_form(user: Dict[str, Any] = None) -> bytes:
     """Generate the HTML for the evaluation form."""
     # Options for each metric according to CVSS v3.1 specification.
     av_options = [("N", "Network (N)"), ("A", "Adjacent (A)"), ("L", "Local (L)"), ("P", "Physical (P)")]
@@ -862,7 +924,18 @@ def render_form() -> bytes:
         </script>
         """
 
+    # User info section
+    user_info = ""
+    if user:
+        user_info = f"""
+        <div class="user-info">
+            <span>Welcome, <strong>{user['full_name']}</strong> ({user['email']})</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+        """
+    
     form_html = f"""
+    {user_info}
     <h1>CVSS v3.1 Evaluation</h1>
     <p style="text-align: center; color: #7f8c8d; margin-bottom: 2rem;">
         Enter the details of a vulnerability and select the appropriate CVSS v3.1 base metrics, or upload a document for automatic analysis.
@@ -1044,7 +1117,7 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     return html_page("CVSS Result", result_html)
 
 
-def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]]) -> bytes:
+def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], user: Dict[str, Any] = None) -> bytes:
     """Generate HTML for the dashboard page.
 
     The dashboard shows KPIs for each severity category and a
@@ -1105,7 +1178,18 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]]) -> 
     </div>
     """
     
+    # User info and logout button
+    user_info = ""
+    if user:
+        user_info = f"""
+        <div class="user-info">
+            <span>Welcome, <strong>{user['full_name']}</strong> ({user['email']})</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+        """
+    
     dashboard_html = f"""
+    {user_info}
     <h1>CVSS Dashboard</h1>
     <div class="dashboard">
         <div class="kpi">{kpi_html}</div>
@@ -1140,6 +1224,9 @@ def color_for_cat(cat: str) -> str:
 
 class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
     """Custom request handler for our CVSS web server."""
+    
+    # Initialize AuthManager as a class variable
+    auth_manager = AuthManager()
 
     def log_message(self, format: str, *args: Any) -> None:
         """Override to suppress default logging to stderr."""
@@ -1148,6 +1235,39 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             f"[{datetime.utcnow().isoformat()}] {self.address_string()} - "
             + format % args
         )
+
+    def get_session_token(self) -> Optional[str]:
+        """Extract session token from cookies."""
+        cookie_header = self.headers.get('Cookie', '')
+        if not cookie_header:
+            return None
+        
+        for cookie in cookie_header.split(';'):
+            cookie = cookie.strip()
+            if cookie.startswith('session_token='):
+                return cookie.split('=', 1)[1]
+        return None
+
+    def get_current_user(self) -> Optional[Dict[str, Any]]:
+        """Get current authenticated user from session."""
+        session_token = self.get_session_token()
+        if not session_token:
+            return None
+        return self.auth_manager.validate_session(session_token)
+
+    def require_auth(self) -> Optional[Dict[str, Any]]:
+        """Check if user is authenticated, redirect to login if not."""
+        user = self.get_current_user()
+        if not user:
+            self.send_redirect('/login')
+            return None
+        return user
+
+    def send_redirect(self, location: str) -> None:
+        """Send a redirect response."""
+        self.send_response(302)
+        self.send_header('Location', location)
+        self.end_headers()
 
     def send_json(self, data: Any, status: int = 200) -> None:
         """Send a JSON response."""
@@ -1256,21 +1376,365 @@ for your specific vulnerability analysis.
         # Users can copy this text and create their own documents
         return example_text.encode('utf-8')
 
+    def render_login_page(self) -> bytes:
+        """Render the login page."""
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVSS Server - Login</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+        
+        .login-container {{
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }}
+        
+        .logo {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .logo h1 {{
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }}
+        
+        .logo p {{
+            color: #666;
+            font-size: 0.9rem;
+        }}
+        
+        .form-group {{
+            margin-bottom: 20px;
+        }}
+        
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }}
+        
+        .form-group input {{
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }}
+        
+        .form-group input:focus {{
+            outline: none;
+            border-color: #667eea;
+        }}
+        
+        .btn {{
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }}
+        
+        .btn:hover {{
+            transform: translateY(-2px);
+        }}
+        
+        .register-link {{
+            text-align: center;
+            margin-top: 20px;
+        }}
+        
+        .register-link a {{
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+        
+        .register-link a:hover {{
+            text-decoration: underline;
+        }}
+        
+        .error {{
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }}
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>🔒 CVSS Server</h1>
+            <p>Sign in to your account</p>
+        </div>
+        
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit" class="btn">Sign In</button>
+        </form>
+        
+        <div class="register-link">
+            <p>Don't have an account? <a href="/register">Sign up here</a></p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        return html.encode('utf-8')
+
+    def render_register_page(self) -> bytes:
+        """Render the registration page."""
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVSS Server - Register</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+        
+        .register-container {{
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }}
+        
+        .logo {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .logo h1 {{
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }}
+        
+        .logo p {{
+            color: #666;
+            font-size: 0.9rem;
+        }}
+        
+        .form-group {{
+            margin-bottom: 20px;
+        }}
+        
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }}
+        
+        .form-group input {{
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }}
+        
+        .form-group input:focus {{
+            outline: none;
+            border-color: #667eea;
+        }}
+        
+        .btn {{
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }}
+        
+        .btn:hover {{
+            transform: translateY(-2px);
+        }}
+        
+        .login-link {{
+            text-align: center;
+            margin-top: 20px;
+        }}
+        
+        .login-link a {{
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+        
+        .login-link a:hover {{
+            text-decoration: underline;
+        }}
+        
+        .error {{
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }}
+        
+        .success {{
+            background: #efe;
+            color: #3c3;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #cfc;
+        }}
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="logo">
+            <h1>🔒 CVSS Server</h1>
+            <p>Create your account</p>
+        </div>
+        
+        <form method="POST" action="/register">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+            </div>
+            
+            <button type="submit" class="btn">Create Account</button>
+        </form>
+        
+        <div class="login-link">
+            <p>Already have an account? <a href="/login">Sign in here</a></p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        return html.encode('utf-8')
+
     def do_GET(self) -> None:
         """Handle GET requests based on the request path."""
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        # Route handling
-        if path == "/" or path == "/evaluate":
+        
+        # Authentication routes (public)
+        if path == "/login":
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
-            form = render_form()
+            login_page = self.render_login_page()
+            self.send_header("Content-Length", str(len(login_page)))
+            self.end_headers()
+            self.wfile.write(login_page)
+        elif path == "/register":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            register_page = self.render_register_page()
+            self.send_header("Content-Length", str(len(register_page)))
+            self.end_headers()
+            self.wfile.write(register_page)
+        elif path == "/logout":
+            # Logout user and redirect to login
+            session_token = self.get_session_token()
+            if session_token:
+                self.auth_manager.logout_user(session_token)
+            self.send_redirect('/login')
+        
+        # Protected routes (require authentication)
+        elif path == "/" or path == "/evaluate":
+            user = self.require_auth()
+            if not user:
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            form = render_form(user)
             self.send_header("Content-Length", str(len(form)))
             self.end_headers()
             self.wfile.write(form)
         elif path == "/dashboard":
-            counts, top_list = summary_counts_and_top(DB_PATH)
-            page = render_dashboard(counts, top_list)
+            user = self.require_auth()
+            if not user:
+                return
+            counts, top_list = summary_counts_and_top(DB_PATH, user['user_id'])
+            page = render_dashboard(counts, top_list, user)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
@@ -1373,10 +1837,91 @@ for your specific vulnerability analysis.
         """Handle POST requests (form submissions)."""
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        if path != "/evaluate":
+        
+        # Handle authentication routes
+        if path == "/login":
+            self.handle_login()
+            return
+        elif path == "/register":
+            self.handle_register()
+            return
+        elif path == "/evaluate":
+            # Require authentication for evaluation
+            user = self.require_auth()
+            if not user:
+                return
+            self.handle_evaluation(user)
+            return
+        else:
             self.send_response(404)
             self.end_headers()
             return
+
+    def handle_login(self) -> None:
+        """Handle user login."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            form_data = urllib.parse.parse_qs(post_data.decode('utf-8'))
+            
+            email = form_data.get('email', [''])[0]
+            password = form_data.get('password', [''])[0]
+            
+            if not email or not password:
+                self.send_redirect('/login?error=missing_fields')
+                return
+            
+            result = self.auth_manager.authenticate_user(email, password)
+            
+            if result['success']:
+                # Set session cookie and redirect to dashboard
+                self.send_response(302)
+                self.send_header('Set-Cookie', f'session_token={result["session_token"]}; HttpOnly; Path=/; Max-Age=604800')
+                self.send_header('Location', '/dashboard')
+                self.end_headers()
+            else:
+                self.send_redirect(f'/login?error={result["error"]}')
+                
+        except Exception as e:
+            print(f"Login error: {e}")
+            self.send_redirect('/login?error=server_error')
+
+    def handle_register(self) -> None:
+        """Handle user registration."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            form_data = urllib.parse.parse_qs(post_data.decode('utf-8'))
+            
+            full_name = form_data.get('full_name', [''])[0]
+            email = form_data.get('email', [''])[0]
+            password = form_data.get('password', [''])[0]
+            confirm_password = form_data.get('confirm_password', [''])[0]
+            
+            if not all([full_name, email, password, confirm_password]):
+                self.send_redirect('/register?error=missing_fields')
+                return
+            
+            if password != confirm_password:
+                self.send_redirect('/register?error=password_mismatch')
+                return
+            
+            if len(password) < 6:
+                self.send_redirect('/register?error=password_too_short')
+                return
+            
+            result = self.auth_manager.register_user(email, password, full_name)
+            
+            if result['success']:
+                self.send_redirect('/login?success=registered')
+            else:
+                self.send_redirect(f'/register?error={result["error"]}')
+                
+        except Exception as e:
+            print(f"Registration error: {e}")
+            self.send_redirect('/register?error=server_error')
+
+    def handle_evaluation(self, user: Dict[str, Any]) -> None:
         
         # Check if this is a multipart form (file upload)
         content_type = self.headers.get("Content-Type", "")
@@ -1488,7 +2033,7 @@ for your specific vulnerability analysis.
         base_score, severity, vector = calculate_base_score(metrics)
         # Persist record
         eval_id = insert_evaluation(
-            DB_PATH, title, cve_id, source, metrics, vector, base_score, severity
+            DB_PATH, title, cve_id, source, metrics, vector, base_score, severity, user['user_id']
         )
         # Return result page
         result_page = render_result(
