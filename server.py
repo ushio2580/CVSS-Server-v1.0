@@ -55,7 +55,7 @@ import tempfile
 import secrets
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from auth import AuthManager
 
 try:
