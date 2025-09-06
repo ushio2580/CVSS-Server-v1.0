@@ -50,6 +50,7 @@ import json
 import os
 import sqlite3
 import urllib.parse
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -57,6 +58,7 @@ from typing import Any, Dict, List, Tuple
 try:
     # When running as part of the cvss_server package (e.g., `python -m cvss_server.server`)
     from .cvss import calculate_base_score  # type: ignore
+    from .document_processor import document_processor  # type: ignore
 except ImportError:
     # Fallback to absolute import when executed as a script (`python cvss_server/server.py`)
     import sys
@@ -67,10 +69,15 @@ except ImportError:
     sys.path.append(str(parent_dir.parent))
     try:
         from cvss_server.cvss import calculate_base_score  # type: ignore
+        from cvss_server.document_processor import document_processor  # type: ignore
     except ImportError:
         # As a last resort, import from relative path by adjusting sys.path again
         sys.path.append(str(parent_dir))
         from cvss import calculate_base_score  # type: ignore
+        try:
+            from document_processor import document_processor  # type: ignore
+        except ImportError:
+            document_processor = None
 
 
 # ---------------------------------------------------------------------------
@@ -524,13 +531,187 @@ def render_form() -> bytes:
     def options_html(options: List[Tuple[str, str]]) -> str:
         return "".join([f"<option value=\"{val}\">{label}</option>" for val, label in options])
 
+    # Document upload section
+    document_upload_section = ""
+    if document_processor:
+        document_upload_section = """
+        <h2>📄 Document Analysis (Optional)</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 1rem;">
+            Upload a Word (.docx) or PDF document to automatically extract CVSS metrics from the text.
+        </p>
+        
+        <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 1px solid #28a745; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="color: #155724; margin-top: 0;">📋 Document Analysis Guide</h3>
+            
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <h4 style="color: #155724; margin-bottom: 1rem;">📖 View Example Document</h4>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" onclick="showExample()" class="example-btn">
+                        👁️ Show Example Document
+                    </button>
+                    <a href="/download-example" class="example-btn" style="text-decoration: none; display: inline-block;">
+                        📥 Download Example
+                    </a>
+                </div>
+                <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
+                    See how to structure your document for better CVSS metric detection
+                </p>
+            </div>
+            
+            <div style="background: #fff; border-radius: 8px; padding: 1rem; border-left: 4px solid #28a745;">
+                <h4 style="color: #155724; margin-top: 0;">💡 Tips for Better Detection:</h4>
+                <ul style="color: #155724; margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li><strong>Use clear terms:</strong> "network attack", "low complexity", "no privileges"</li>
+                    <li><strong>Include CVE ID:</strong> CVE-2024-12345 format</li>
+                    <li><strong>Describe impact clearly:</strong> "high impact on confidentiality"</li>
+                    <li><strong>Mention scope:</strong> "affects different components" or "within same component"</li>
+                </ul>
+            </div>
+        </div>
+        
+        <label for="document">Upload Document</label>
+        <input type="file" id="document" name="document" accept=".docx,.pdf" style="padding: 0.5rem; border: 2px solid #3498db; border-radius: 8px; background: #f8f9fa;" />
+        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem;">
+            Supported formats: .docx, .pdf<br>
+            The system will analyze the document and pre-fill the CVSS metrics.
+        </p>
+        
+        <!-- Example Document Modal -->
+        <div id="exampleModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeExample()">&times;</span>
+                <h2>📄 Example Document Structure</h2>
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.9rem; line-height: 1.6; max-height: 400px; overflow-y: auto;">
+                    <strong>Vulnerability Report: Remote Code Execution</strong><br><br>
+                    
+                    <strong>CVE ID:</strong> CVE-2024-12345<br><br>
+                    
+                    <strong>DESCRIPTION:</strong><br>
+                    This critical vulnerability allows remote attackers to execute arbitrary 
+                    code over the network without requiring any user interaction. The attack 
+                    complexity is low and requires no privileges. The vulnerability has high 
+                    impact on confidentiality, integrity, and availability.<br><br>
+                    
+                    <strong>TECHNICAL DETAILS:</strong><br>
+                    - The vulnerability is network accessible<br>
+                    - Attack complexity is low and simple to exploit<br>
+                    - No privileges are required for exploitation<br>
+                    - No user interaction is needed<br>
+                    - Scope is changed (affects different components)<br>
+                    - Complete data disclosure is possible<br>
+                    - Data modification can occur<br>
+                    - Service disruption is complete<br><br>
+                    
+                    <strong>CVSS METRICS:</strong><br>
+                    Attack Vector: Network<br>
+                    Attack Complexity: Low<br>
+                    Privileges Required: None<br>
+                    User Interaction: None<br>
+                    Scope: Changed<br>
+                    Confidentiality Impact: High<br>
+                    Integrity Impact: High<br>
+                    Availability Impact: High<br><br>
+                    
+                    <strong>EXPECTED RESULT:</strong><br>
+                    Base Score: 9.8 (Critical)<br>
+                    Vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+                </div>
+            </div>
+        </div>
+        
+        <style>
+        .example-btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+            text-align: center;
+            cursor: pointer;
+            min-width: 200px;
+        }
+        
+        .example-btn:hover {
+            background: linear-gradient(45deg, #20c997, #17a2b8);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+                padding: 1rem;
+            }
+        }
+        </style>
+        
+        <script>
+        function showExample() {
+            document.getElementById('exampleModal').style.display = 'block';
+        }
+        
+        function closeExample() {
+            document.getElementById('exampleModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            var modal = document.getElementById('exampleModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        </script>
+        """
+
     form_html = f"""
     <h1>CVSS v3.1 Evaluation</h1>
     <p style="text-align: center; color: #7f8c8d; margin-bottom: 2rem;">
-        Enter the details of a vulnerability and select the appropriate CVSS v3.1 base metrics.
+        Enter the details of a vulnerability and select the appropriate CVSS v3.1 base metrics, or upload a document for automatic analysis.
     </p>
     
-    <form method="post" action="/evaluate">
+    <form method="post" action="/evaluate" enctype="multipart/form-data">
         <h2>Vulnerability Information</h2>
         <label for="title">Title / Description (optional)</label>
         <input type="text" id="title" name="title" placeholder="Example: Remote Code Execution in Module X" />
@@ -540,6 +721,8 @@ def render_form() -> bytes:
 
         <label for="source">Source (optional)</label>
         <input type="text" id="source" name="source" placeholder="Internal, NVD, etc." />
+
+        {document_upload_section}
 
         <h2>CVSS Base Metrics</h2>
         <label for="AV">Attack Vector (AV)</label>
@@ -592,7 +775,7 @@ def render_form() -> bytes:
     return html_page("CVSS Evaluation", form_html)
 
 
-def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str) -> bytes:
+def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str, document_analysis: Dict[str, any] = None) -> bytes:
     """Generate HTML showing the result of the evaluation."""
     # Compose human-readable summary of metrics
     metric_names = {
@@ -615,6 +798,49 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     # Get severity class for styling
     severity_class = f"severity-{severity.lower()}"
     
+    # Document analysis section
+    document_section = ""
+    if document_analysis and document_analysis.get('success'):
+        doc = document_analysis
+        document_section = f"""
+        <h2>📄 Document Analysis Results</h2>
+        <div class="result" style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border-left: 5px solid #28a745;">
+            <h3>📋 Extracted Information</h3>
+            <table>
+                <tr><th>Filename</th><td>{doc.get('filename', 'Unknown')}</td></tr>
+                <tr><th>Detected Title</th><td>{doc.get('title', 'Not detected')}</td></tr>
+                <tr><th>Detected CVE ID</th><td>{doc.get('cve_id', 'Not detected')}</td></tr>
+            </table>
+            
+            <h3>🔍 Detected CVSS Metrics</h3>
+            <table>
+                <tr><th>Metric</th><th>Detected Value</th><th>Description</th></tr>
+                <tr><td>Attack Vector</td><td>{doc['metrics'].get('AV', 'N/A')}</td><td>{'Network' if doc['metrics'].get('AV') == 'N' else 'Adjacent' if doc['metrics'].get('AV') == 'A' else 'Local' if doc['metrics'].get('AV') == 'L' else 'Physical'}</td></tr>
+                <tr><td>Attack Complexity</td><td>{doc['metrics'].get('AC', 'N/A')}</td><td>{'Low' if doc['metrics'].get('AC') == 'L' else 'High'}</td></tr>
+                <tr><td>Privileges Required</td><td>{doc['metrics'].get('PR', 'N/A')}</td><td>{'None' if doc['metrics'].get('PR') == 'N' else 'Low' if doc['metrics'].get('PR') == 'L' else 'High'}</td></tr>
+                <tr><td>User Interaction</td><td>{doc['metrics'].get('UI', 'N/A')}</td><td>{'None' if doc['metrics'].get('UI') == 'N' else 'Required'}</td></tr>
+                <tr><td>Scope</td><td>{doc['metrics'].get('S', 'N/A')}</td><td>{'Unchanged' if doc['metrics'].get('S') == 'U' else 'Changed'}</td></tr>
+                <tr><td>Confidentiality Impact</td><td>{doc['metrics'].get('C', 'N/A')}</td><td>{'None' if doc['metrics'].get('C') == 'N' else 'Low' if doc['metrics'].get('C') == 'L' else 'High'}</td></tr>
+                <tr><td>Integrity Impact</td><td>{doc['metrics'].get('I', 'N/A')}</td><td>{'None' if doc['metrics'].get('I') == 'N' else 'Low' if doc['metrics'].get('I') == 'L' else 'High'}</td></tr>
+                <tr><td>Availability Impact</td><td>{doc['metrics'].get('A', 'N/A')}</td><td>{'None' if doc['metrics'].get('A') == 'N' else 'Low' if doc['metrics'].get('A') == 'L' else 'High'}</td></tr>
+            </table>
+            
+            <h3>📝 Extracted Text (Preview)</h3>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9rem;">
+                {doc.get('text', 'No text extracted')}
+            </div>
+        </div>
+        """
+    elif document_analysis and not document_analysis.get('success'):
+        document_section = f"""
+        <h2>📄 Document Analysis Results</h2>
+        <div class="result" style="background: linear-gradient(135deg, #ffeaea, #f8d7da); border-left: 5px solid #dc3545;">
+            <h3>❌ Document Processing Error</h3>
+            <p><strong>Error:</strong> {document_analysis.get('error', 'Unknown error')}</p>
+            <p><strong>Filename:</strong> {document_analysis.get('filename', 'Unknown')}</p>
+        </div>
+        """
+    
     result_html = f"""
     <h1>CVSS Evaluation Result</h1>
     
@@ -630,6 +856,8 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
             {vector}
         </div>
     </div>
+    
+    {document_section}
     
     <h2>Vulnerability Details</h2>
     <table>
@@ -762,6 +990,104 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+    
+    def generate_cvss_example_pdf(self) -> bytes:
+        """Generate a PDF example document for CVSS analysis."""
+        # Create a simple PDF-like structure using text formatting
+        # In a full implementation, you'd use a library like reportlab or fpdf
+        
+        example_text = """CVSS Analysis Example Document
+===============================
+
+VULNERABILITY TITLE
+==================
+Remote Code Execution in Web Application
+
+CVE ID
+======
+CVE-2024-12345
+
+DESCRIPTION
+===========
+This critical vulnerability allows remote attackers to execute arbitrary code 
+over the network without requiring any user interaction. The attack complexity 
+is low and requires no privileges. The vulnerability has high impact on 
+confidentiality, integrity, and availability.
+
+TECHNICAL DETAILS
+=================
+Attack Vector: Network
+- The vulnerability is accessible over the network
+- Attackers can exploit this remotely without physical access
+- No local system access is required
+
+Attack Complexity: Low
+- The attack is simple to execute
+- Exploitation requires minimal technical skill
+- No complex conditions need to be met
+
+Privileges Required: None
+- No authentication is required
+- No user privileges are needed
+- Attackers can exploit this anonymously
+
+User Interaction: None
+- No user action is required
+- The attack can be executed automatically
+- Users don't need to click or interact
+
+Scope: Changed
+- The vulnerability affects different components
+- Exploitation impacts other parts of the system
+- The scope extends beyond the vulnerable component
+
+Impact Assessment:
+- Confidentiality: High - Complete data disclosure is possible
+- Integrity: High - Data can be completely modified
+- Availability: High - Service disruption is complete
+
+CVSS METRICS DETECTED
+======================
+Attack Vector: N (Network)
+Attack Complexity: L (Low)
+Privileges Required: N (None)
+User Interaction: N (None)
+Scope: C (Changed)
+Confidentiality Impact: H (High)
+Integrity Impact: H (High)
+Availability Impact: H (High)
+
+EXPECTED RESULT
+==============
+Base Score: 9.8 (Critical)
+Vector String: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+
+TIPS FOR BETTER DETECTION
+=========================
+1. Use clear, specific terms from the CVSS specification
+2. Avoid ambiguous language like "medium" or "some"
+3. Include technical details about the attack method
+4. Describe the impact clearly and specifically
+5. Mention the scope of the vulnerability
+6. Use consistent terminology throughout
+
+EXAMPLE PHRASES THAT WORK WELL:
+- "This vulnerability allows remote attackers to execute code over the network"
+- "The attack complexity is low and simple to exploit"
+- "No privileges are required for exploitation"
+- "No user interaction is needed"
+- "The scope is changed and affects different components"
+- "This results in complete data disclosure"
+- "The vulnerability has high impact on confidentiality, integrity, and availability"
+
+This document demonstrates the proper structure and terminology needed for 
+accurate CVSS metric detection. Copy this format and modify the content 
+for your specific vulnerability analysis.
+"""
+        
+        # For now, return the text as bytes (in a real implementation, this would be actual PDF content)
+        # Users can copy this text and create their own documents
+        return example_text.encode('utf-8')
 
     def do_GET(self) -> None:
         """Handle GET requests based on the request path."""
@@ -858,6 +1184,15 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(csv_data)))
             self.end_headers()
             self.wfile.write(csv_data)
+        elif path == "/download-example":
+            # Download CVSS analysis example PDF
+            pdf_content = self.generate_cvss_example_pdf()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", "attachment; filename=CVSS_Analysis_Example.pdf")
+            self.send_header("Content-Length", str(len(pdf_content)))
+            self.end_headers()
+            self.wfile.write(pdf_content)
         else:
             # Not found
             self.send_response(404)
@@ -875,21 +1210,112 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        # Read and parse form data
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length)
-        form = urllib.parse.parse_qs(post_data.decode("utf-8"))
+        
+        # Check if this is a multipart form (file upload)
+        content_type = self.headers.get("Content-Type", "")
+        document_analysis = None
+        
+        if "multipart/form-data" in content_type:
+            # Handle file upload
+            try:
+                # Parse multipart form data
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
+                
+                # Parse multipart data manually (simplified)
+                boundary = content_type.split("boundary=")[1]
+                parts = post_data.split(b"--" + boundary.encode())
+                
+                form_data = {}
+                uploaded_file = None
+                filename = None
+                
+                for part in parts:
+                    if b"Content-Disposition: form-data" in part:
+                        # Extract field name and value
+                        if b'name="' in part:
+                            name_start = part.find(b'name="') + 6
+                            name_end = part.find(b'"', name_start)
+                            field_name = part[name_start:name_end].decode()
+                            
+                            # Check if it's a file field
+                            if b'filename="' in part:
+                                # This is a file upload
+                                filename_start = part.find(b'filename="') + 10
+                                filename_end = part.find(b'"', filename_start)
+                                filename = part[filename_start:filename_end].decode()
+                                
+                                # Extract file content
+                                content_start = part.find(b'\r\n\r\n') + 4
+                                content_end = part.rfind(b'\r\n')
+                                if content_end > content_start:
+                                    file_content = part[content_start:content_end]
+                                    uploaded_file = file_content
+                            else:
+                                # This is a regular form field
+                                value_start = part.find(b'\r\n\r\n') + 4
+                                value_end = part.rfind(b'\r\n')
+                                if value_end > value_start:
+                                    field_value = part[value_start:value_end].decode()
+                                    form_data[field_name] = field_value
+                
+                # Process uploaded document if present
+                if uploaded_file and filename and document_processor:
+                    try:
+                        document_analysis = document_processor.process_document(uploaded_file, filename)
+                        if document_analysis.get('success'):
+                            # Pre-fill form with detected values
+                            detected_metrics = document_analysis['metrics']
+                            print(f"🔍 DEBUG - Document metrics detected: {detected_metrics}")
+                            
+                            for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
+                                # Always use detected values if available, regardless of form_data
+                                if key in detected_metrics:
+                                    form_data[key] = detected_metrics[key]
+                                    print(f"✅ DEBUG - Set {key} = {detected_metrics[key]}")
+                                else:
+                                    print(f"❌ DEBUG - No detection for {key}")
+                            
+                            print(f"🔍 DEBUG - Final form_data: {form_data}")
+                            
+                            # Pre-fill other fields
+                            if document_analysis.get('title'):
+                                form_data['title'] = document_analysis['title']
+                            if document_analysis.get('cve_id'):
+                                form_data['cve_id'] = document_analysis['cve_id']
+                    except Exception as e:
+                        print(f"❌ DEBUG - Error processing document: {e}")
+                        document_analysis = {
+                            'success': False,
+                            'error': str(e),
+                            'filename': filename
+                        }
+                
+            except Exception as e:
+                # Fallback to regular form processing
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
+                form_data = urllib.parse.parse_qs(post_data.decode("utf-8"))
+        else:
+            # Regular form data (no file upload)
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            form_data = urllib.parse.parse_qs(post_data.decode("utf-8"))
 
         def get_value(key: str) -> str:
-            return form.get(key, [""])[0]
+            return form_data.get(key, [""])[0]
 
         # Extract metrics and metadata
         metrics = {}
         for key in ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]:
             metrics[key] = get_value(key)
+            print(f"🔍 DEBUG - Final metric {key}: {metrics[key]}")
+        
         title = get_value("title").strip()
         cve_id = get_value("cve_id").strip()
         source = get_value("source").strip()
+        
+        print(f"🔍 DEBUG - Final metrics for calculation: {metrics}")
 
         # Compute base score
         base_score, severity, vector = calculate_base_score(metrics)
@@ -906,6 +1332,7 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             base_score,
             severity,
             vector,
+            document_analysis
         )
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
