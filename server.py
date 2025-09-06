@@ -127,7 +127,44 @@ def init_db(db_path: Path) -> None:
                 vector TEXT NOT NULL,
                 base_score REAL NOT NULL,
                 severity TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                user_id INTEGER
+            );
+            """
+        )
+        
+        # Add user_id column if it doesn't exist (for existing databases)
+        try:
+            cur.execute("ALTER TABLE evaluations ADD COLUMN user_id INTEGER")
+        except sqlite3.OperationalError:
+            # Column already exists, ignore
+            pass
+        
+        # Create users table if it doesn't exist
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP,
+                is_active BOOLEAN DEFAULT 1
+            );
+            """
+        )
+        
+        # Create user_sessions table if it doesn't exist
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                session_token TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             );
             """
         )
