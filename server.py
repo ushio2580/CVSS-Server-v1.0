@@ -1998,8 +1998,8 @@ for your specific vulnerability analysis.
             # Handle file upload
             try:
                 # Parse multipart form data
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length)
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
                 
                 # Parse multipart data manually (simplified)
                 boundary = content_type.split("boundary=")[1]
