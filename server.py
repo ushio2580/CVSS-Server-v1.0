@@ -56,7 +56,7 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
-from auth import AuthManager
+from simple_auth import SimpleAuth
 
 try:
     # When running as part of the cvss_server package (e.g., `python -m cvss_server.server`)
@@ -1295,8 +1295,8 @@ def color_for_cat(cat: str) -> str:
 class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
     """Custom request handler for our CVSS web server."""
     
-    # Initialize AuthManager as a class variable
-    auth_manager = AuthManager()
+    # Initialize SimpleAuth as a class variable
+    auth_manager = SimpleAuth()
 
     def log_message(self, format: str, *args: Any) -> None:
         """Override to suppress default logging to stderr."""
@@ -2157,7 +2157,7 @@ def run_server(host: str = HOST, port: int = PORT) -> None:
         
         # Test auth manager
         print(f"🔐 Testing authentication system...")
-        auth_manager = AuthManager()
+        auth_manager = SimpleAuth()
         print(f"✅ Authentication system ready")
         
         server_address = (host, port)
