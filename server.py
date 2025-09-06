@@ -195,6 +195,7 @@ def insert_evaluation(
         vector: CVSS vector string.
         base_score: The computed base score.
         severity: Severity string.
+        user_id: Optional user ID.
 
     Returns:
         The integer ID of the inserted row.
@@ -204,24 +205,49 @@ def insert_evaluation(
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO evaluations
-                (title, cve_id, source, metrics_json, vector, base_score, severity, created_at, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                title or "",
-                cve_id or "",
-                source or "",
-                metrics_json,
-                vector,
-                base_score,
-                severity,
-                created_at,
-                user_id,
-            ),
-        )
+        
+        # Check if user_id column exists
+        cur.execute("PRAGMA table_info(evaluations)")
+        columns = [col[1] for col in cur.fetchall()]
+        has_user_id = 'user_id' in columns
+        
+        if has_user_id:
+            cur.execute(
+                """
+                INSERT INTO evaluations
+                    (title, cve_id, source, metrics_json, vector, base_score, severity, created_at, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    title or "",
+                    cve_id or "",
+                    source or "",
+                    metrics_json,
+                    vector,
+                    base_score,
+                    severity,
+                    created_at,
+                    user_id,
+                ),
+            )
+        else:
+            cur.execute(
+                """
+                INSERT INTO evaluations
+                    (title, cve_id, source, metrics_json, vector, base_score, severity, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    title or "",
+                    cve_id or "",
+                    source or "",
+                    metrics_json,
+                    vector,
+                    base_score,
+                    severity,
+                    created_at,
+                ),
+            )
         conn.commit()
         return cur.lastrowid
     finally:
@@ -268,6 +294,7 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
 
     Args:
         db_path: Path to the database.
+        user_id: Optional user ID to filter by.
         top_n: Number of top records to return.
 
     Returns:
@@ -279,8 +306,14 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.cursor()
-        # Count by severity (filter by user if provided)
-        if user_id:
+        
+        # Check if user_id column exists
+        cur.execute("PRAGMA table_info(evaluations)")
+        columns = [col[1] for col in cur.fetchall()]
+        has_user_id = 'user_id' in columns
+        
+        # Count by severity (filter by user if provided and column exists)
+        if user_id and has_user_id:
             cur.execute(
                 "SELECT severity, COUNT(*) as count FROM evaluations WHERE user_id = ? GROUP BY severity",
                 (user_id,)
@@ -291,8 +324,8 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
             )
         counts = {row["severity"]: row["count"] for row in cur.fetchall()}
 
-        # Get top N by base_score descending (filter by user if provided)
-        if user_id:
+        # Get top N by base_score descending (filter by user if provided and column exists)
+        if user_id and has_user_id:
             cur.execute(
                 """
                 SELECT * FROM evaluations
