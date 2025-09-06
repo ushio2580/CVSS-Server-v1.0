@@ -1930,7 +1930,6 @@ for your specific vulnerability analysis.
     def handle_login(self) -> None:
         """Handle user login."""
         try:
-            print(f"🔐 DEBUG - Login attempt started")
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             form_data = urllib.parse.parse_qs(post_data.decode('utf-8'))
@@ -1938,32 +1937,23 @@ for your specific vulnerability analysis.
             email = form_data.get('email', [''])[0]
             password = form_data.get('password', [''])[0]
             
-            print(f"🔐 DEBUG - Email: {email[:3]}***")
-            
             if not email or not password:
-                print(f"🔐 DEBUG - Missing fields")
                 self.send_redirect('/login?error=missing_fields')
                 return
             
-            print(f"🔐 DEBUG - Attempting authentication...")
             result = self.auth_manager.authenticate_user(email, password)
-            print(f"🔐 DEBUG - Auth result: {result.get('success', False)}")
             
             if result['success']:
-                print(f"🔐 DEBUG - Login successful, setting cookie")
                 # Set session cookie and redirect to dashboard
                 self.send_response(302)
                 self.send_header('Set-Cookie', f'session_token={result["session_token"]}; HttpOnly; Path=/; Max-Age=604800')
                 self.send_header('Location', '/dashboard')
                 self.end_headers()
             else:
-                print(f"🔐 DEBUG - Login failed: {result.get('error', 'Unknown error')}")
                 self.send_redirect(f'/login?error={result["error"]}')
                 
         except Exception as e:
-            print(f"❌ Login error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Login error: {e}")
             self.send_redirect('/login?error=server_error')
 
     def handle_register(self) -> None:
@@ -2145,41 +2135,22 @@ def run_server(host: str = HOST, port: int = PORT) -> None:
     print(f"🔌 Port: {port}")
     print(f"🗄️  Database: {DB_PATH}")
     
-    try:
-        # Ensure database directory exists
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        print(f"📁 Database directory ready")
-        
-        # Initialize database
-        print(f"🔧 Initializing database...")
-        init_db(DB_PATH)
-        print(f"✅ Database initialized successfully")
-        
-        # Test auth manager
-        print(f"🔐 Testing authentication system...")
-        auth_manager = AuthManager()
-        print(f"✅ Authentication system ready")
-        
-        server_address = (host, port)
-        with http.server.ThreadingHTTPServer(server_address, CVSSRequestHandler) as httpd:
-            print(f"✅ CVSS Server running at http://{host}:{port}/")
-            print(f"🔐 Authentication system enabled")
-            print(f"📄 Document processing enabled")
-            print(f"🌐 Server ready to accept connections")
-            try:
-                httpd.serve_forever()
-            except KeyboardInterrupt:
-                print("\n🛑 Server shutting down...")
-            except Exception as e:
-                print(f"❌ Server error: {e}")
-                import traceback
-                traceback.print_exc()
-                raise
-    except Exception as e:
-        print(f"❌ Failed to start server: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
+    # Ensure database directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    init_db(DB_PATH)
+    
+    server_address = (host, port)
+    with http.server.ThreadingHTTPServer(server_address, CVSSRequestHandler) as httpd:
+        print(f"✅ CVSS Server running at http://{host}:{port}/")
+        print(f"🔐 Authentication system enabled")
+        print(f"📄 Document processing enabled")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n🛑 Server shutting down...")
+        except Exception as e:
+            print(f"❌ Server error: {e}")
+            raise
 
 
 if __name__ == "__main__":
