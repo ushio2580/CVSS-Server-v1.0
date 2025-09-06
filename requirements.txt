@@ -9,4 +9,3 @@ pdfplumber==0.9.0
 
 # Authentication dependencies
 bcrypt==4.0.1
-secrets
