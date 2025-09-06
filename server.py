@@ -56,6 +56,7 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
+from auth import AuthManager
 
 try:
     # When running as part of the cvss_server package (e.g., `python -m cvss_server.server`)
@@ -1002,7 +1003,7 @@ def render_form(user: Dict[str, Any] = None) -> bytes:
             <a href="/logout" class="logout-btn">Logout</a>
         </div>
         """
-
+    
     form_html = f"""
     {user_info}
     <h1>CVSS v3.1 Evaluation</h1>
@@ -1150,7 +1151,7 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     <div class="result">
         <div class="score-display" style="color: {color_for_cat(severity)};">
             {base_score}
-    </div>
+        </div>
         <div style="text-align: center; margin-bottom: 1rem;">
             <span class="severity-badge {severity_class}">{severity}</span>
         </div>
@@ -1164,18 +1165,18 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     
     <h2>Vulnerability Details</h2>
     <div class="table-container">
-    <table>
-        <tr><th>Title</th><td>{title or '-'}</td></tr>
-        <tr><th>CVE ID</th><td>{cve_id or '-'}</td></tr>
-        <tr><th>Source</th><td>{source or '-'}</td></tr>
-    </table>
+        <table>
+            <tr><th>Title</th><td>{title or '-'}</td></tr>
+            <tr><th>CVE ID</th><td>{cve_id or '-'}</td></tr>
+            <tr><th>Source</th><td>{source or '-'}</td></tr>
+        </table>
     </div>
     
     <h2>CVSS Base Metrics</h2>
     <div class="table-container">
-    <table>
-        {rows}
-    </table>
+        <table>
+            {rows}
+        </table>
     </div>
     
     <div class="nav-links">
@@ -1240,10 +1241,10 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], use
     top_table = f"""
     <h2>Top Evaluations (by Base Score)</h2>
     <div class="table-container">
-    <table>
-        <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th></tr>
+        <table>
+            <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th></tr>
             {rows if rows else '<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
-    </table>
+        </table>
     </div>
     """
     
@@ -1294,6 +1295,8 @@ def color_for_cat(cat: str) -> str:
 class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
     """Custom request handler for our CVSS web server."""
     
+    # Initialize AuthManager as a class variable
+    auth_manager = AuthManager()
 
     def log_message(self, format: str, *args: Any) -> None:
         """Override to suppress default logging to stderr."""
