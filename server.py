@@ -230,23 +230,23 @@ def insert_evaluation(
                 ),
             )
         else:
-        cur.execute(
-            """
-            INSERT INTO evaluations
-                (title, cve_id, source, metrics_json, vector, base_score, severity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                title or "",
-                cve_id or "",
-                source or "",
-                metrics_json,
-                vector,
-                base_score,
-                severity,
-                created_at,
-            ),
-        )
+            cur.execute(
+                """
+                INSERT INTO evaluations
+                    (title, cve_id, source, metrics_json, vector, base_score, severity, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    title or "",
+                    cve_id or "",
+                    source or "",
+                    metrics_json,
+                    vector,
+                    base_score,
+                    severity,
+                    created_at,
+                ),
+            )
         conn.commit()
         return cur.lastrowid
     finally:
@@ -318,9 +318,9 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
                 (user_id,)
             )
         else:
-        cur.execute(
-            "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
-        )
+            cur.execute(
+                "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
+            )
         counts = {row["severity"]: row["count"] for row in cur.fetchall()}
 
         # Get top N by base_score descending (filter by user if provided and column exists)
@@ -335,14 +335,14 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
                 (user_id, top_n),
             )
         else:
-        cur.execute(
-            """
-            SELECT * FROM evaluations
-            ORDER BY base_score DESC, created_at DESC
-            LIMIT ?
-            """,
-            (top_n,),
-        )
+            cur.execute(
+                """
+                SELECT * FROM evaluations
+                ORDER BY base_score DESC, created_at DESC
+                LIMIT ?
+                """,
+                (top_n,),
+            )
         rows = cur.fetchall()
         top_list: List[Dict[str, Any]] = []
         for row in rows:
