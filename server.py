@@ -88,8 +88,8 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 # Host and port the server listens on.  Bind to all interfaces by default.
-HOST = "0.0.0.0"
-PORT = 8000
+HOST = os.environ.get("HOST", "0.0.0.0")
+PORT = int(os.environ.get("PORT", 8000))
 
 # Path to the SQLite database file.  Stored relative to this script's
 # directory to avoid writing outside the repo.  If you change this
@@ -2060,16 +2060,27 @@ for your specific vulnerability analysis.
 
 def run_server(host: str = HOST, port: int = PORT) -> None:
     """Initialise the database and run the HTTP server indefinitely."""
+    print(f"🚀 Starting CVSS Server...")
+    print(f"📡 Host: {host}")
+    print(f"🔌 Port: {port}")
+    print(f"🗄️  Database: {DB_PATH}")
+    
     # Ensure database directory exists
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     init_db(DB_PATH)
+    
     server_address = (host, port)
     with http.server.ThreadingHTTPServer(server_address, CVSSRequestHandler) as httpd:
-        print(f"Serving CVSS app at http://{host}:{port}/")
+        print(f"✅ CVSS Server running at http://{host}:{port}/")
+        print(f"🔐 Authentication system enabled")
+        print(f"📄 Document processing enabled")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("\nServer shutting down...")
+            print("\n🛑 Server shutting down...")
+        except Exception as e:
+            print(f"❌ Server error: {e}")
+            raise
 
 
 if __name__ == "__main__":
