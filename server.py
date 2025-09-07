@@ -1296,7 +1296,7 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     return html_page("CVSS Result", result_html)
 
 
-def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], user: Dict[str, Any] = None) -> bytes:
+def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], user: Dict[str, Any] = None, show_all: bool = True) -> bytes:
     """Generate HTML for the dashboard page.
 
     The dashboard shows KPIs for each severity category and a
@@ -1348,8 +1348,9 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], use
         ]
     )
     
+    table_title = "Top Evaluations (All Users)" if show_all else "My Top Evaluations"
     top_table = f"""
-    <h2>Top Evaluations (by Base Score)</h2>
+    <h2>{table_title} (by Base Score)</h2>
     <table>
         <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th><th>Evaluated by</th></tr>
         {rows if rows else '<tr><td colspan="7" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
@@ -1366,9 +1367,25 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], use
         </div>
         """
     
+    # Filter buttons
+    filter_buttons = f"""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="display: inline-block; background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 1rem 0; color: #333;">View Options</h3>
+            <a href="/dashboard?show_all=true" style="display: inline-block; padding: 0.75rem 1.5rem; margin: 0 0.5rem; background: {'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' if show_all else '#f8f9fa'}; color: {'white' if show_all else '#333'}; text-decoration: none; border-radius: 8px; font-weight: 500; transition: all 0.3s ease; border: 2px solid {'transparent' if show_all else '#e0e6ed'};">
+                🌍 All Users
+            </a>
+            <a href="/dashboard?show_all=false" style="display: inline-block; padding: 0.75rem 1.5rem; margin: 0 0.5rem; background: {'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' if not show_all else '#f8f9fa'}; color: {'white' if not show_all else '#333'}; text-decoration: none; border-radius: 8px; font-weight: 500; transition: all 0.3s ease; border: 2px solid {'transparent' if not show_all else '#e0e6ed'};">
+                👤 My Evaluations
+            </a>
+        </div>
+    </div>
+    """
+    
     dashboard_html = f"""
     {user_info}
     <h1>CVSS Dashboard</h1>
+    {filter_buttons}
     <div class="dashboard">
         <div class="kpi">{kpi_html}</div>
         <div>
@@ -1654,8 +1671,18 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             user = self.require_auth()
             if not user:
                 return
-            counts, top_list = summary_counts_and_top(DB_PATH, user['user_id'])
-            page = render_dashboard(counts, top_list, user)
+            
+            # Check if user wants to see only their evaluations
+            query_params = urllib.parse.parse_qs(parsed.query)
+            show_all = query_params.get('show_all', ['true'])[0].lower() == 'true'
+            
+            # Show all evaluations or filter by user based on parameter
+            if show_all:
+                counts, top_list = summary_counts_and_top(DB_PATH, user_id=None)
+            else:
+                counts, top_list = summary_counts_and_top(DB_PATH, user['user_id'])
+            
+            page = render_dashboard(counts, top_list, user, show_all)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
