@@ -278,9 +278,9 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
                 (user_id,)
             )
         else:
-        cur.execute(
-            "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
-        )
+            cur.execute(
+                "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
+            )
         counts = {row["severity"]: row["count"] for row in cur.fetchall()}
 
         # Get top N by base_score descending (filter by user if provided)
@@ -1845,8 +1845,8 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             # Handle file upload
             try:
                 # Parse multipart form data
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length)
+                content_length = int(self.headers.get("Content-Length", 0))
+                post_data = self.rfile.read(content_length)
                 
                 # Parse multipart data manually (simplified)
                 boundary = content_type.split("boundary=")[1]
