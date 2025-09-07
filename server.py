@@ -278,18 +278,20 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
                 (user_id,)
             )
         else:
-            cur.execute(
-                "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
-            )
+        cur.execute(
+            "SELECT severity, COUNT(*) as count FROM evaluations GROUP BY severity"
+        )
         counts = {row["severity"]: row["count"] for row in cur.fetchall()}
 
         # Get top N by base_score descending (filter by user if provided)
         if user_id:
             cur.execute(
                 """
-                SELECT * FROM evaluations
-                WHERE user_id = ?
-                ORDER BY base_score DESC, created_at DESC
+                SELECT e.*, u.full_name, u.email
+                FROM evaluations e
+                LEFT JOIN users u ON e.user_id = u.id
+                WHERE e.user_id = ?
+                ORDER BY e.base_score DESC, e.created_at DESC
                 LIMIT ?
                 """,
                 (user_id, top_n),
@@ -297,8 +299,10 @@ def summary_counts_and_top(db_path: Path, user_id: int = None, top_n: int = 10) 
         else:
             cur.execute(
                 """
-                SELECT * FROM evaluations
-                ORDER BY base_score DESC, created_at DESC
+                SELECT e.*, u.full_name, u.email
+                FROM evaluations e
+                LEFT JOIN users u ON e.user_id = u.id
+                ORDER BY e.base_score DESC, e.created_at DESC
                 LIMIT ?
                 """,
                 (top_n,),
@@ -1187,7 +1191,7 @@ def render_form(user: Dict[str, Any] = None) -> bytes:
     return html_page("CVSS Evaluation", form_html)
 
 
-def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str, document_analysis: Dict[str, any] = None) -> bytes:
+def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str], base_score: float, severity: str, vector: str, document_analysis: Dict[str, any] = None, user: Dict[str, Any] = None) -> bytes:
     """Generate HTML showing the result of the evaluation."""
     # Compose human-readable summary of metrics
     metric_names = {
@@ -1259,7 +1263,7 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
     <div class="result">
         <div class="score-display" style="color: {color_for_cat(severity)};">
             {base_score}
-        </div>
+    </div>
         <div style="text-align: center; margin-bottom: 1rem;">
             <span class="severity-badge {severity_class}">{severity}</span>
         </div>
@@ -1276,6 +1280,7 @@ def render_result(title: str, cve_id: str, source: str, metrics: Dict[str, str],
         <tr><th>Title</th><td>{title or '-'}</td></tr>
         <tr><th>CVE ID</th><td>{cve_id or '-'}</td></tr>
         <tr><th>Source</th><td>{source or '-'}</td></tr>
+        {f'<tr><th>Evaluated by</th><td><strong>{user["full_name"]}</strong> ({user["email"]})</td></tr>' if user else ''}
     </table>
     
     <h2>CVSS Base Metrics</h2>
@@ -1337,6 +1342,7 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], use
             f"<td><strong>{rec['base_score']}</strong></td>"
             f"<td><span class=\"severity-badge severity-{rec['severity'].lower()}\">{rec['severity']}</span></td>"
             f"<td>{rec['created_at'][:19]}</td>"
+            f"<td>{rec.get('full_name', 'Unknown')} ({rec.get('email', 'N/A')})</td>"
             f"</tr>"
             for rec in top_list
         ]
@@ -1345,8 +1351,8 @@ def render_dashboard(counts: Dict[str, int], top_list: List[Dict[str, Any]], use
     top_table = f"""
     <h2>Top Evaluations (by Base Score)</h2>
     <table>
-        <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th></tr>
-        {rows if rows else '<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
+        <tr><th>ID</th><th>Title</th><th>CVE ID</th><th>Base Score</th><th>Severity</th><th>Created At (UTC)</th><th>Evaluated by</th></tr>
+        {rows if rows else '<tr><td colspan="7" style="text-align: center; color: #7f8c8d;">No evaluations yet.</td></tr>'}
     </table>
     """
     
@@ -1839,8 +1845,8 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             # Handle file upload
             try:
                 # Parse multipart form data
-                content_length = int(self.headers.get("Content-Length", 0))
-                post_data = self.rfile.read(content_length)
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length)
                 
                 # Parse multipart data manually (simplified)
                 boundary = content_type.split("boundary=")[1]
@@ -1952,7 +1958,8 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
             base_score,
             severity,
             vector,
-            document_analysis
+            document_analysis,
+            user
         )
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
