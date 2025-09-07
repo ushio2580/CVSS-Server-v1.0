@@ -540,25 +540,20 @@ def render_form() -> bytes:
             Upload a Word (.docx) or PDF document to automatically extract CVSS metrics from the text.
         </p>
         
-        <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 1px solid #28a745; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="background: linear-gradient(135deg, #e8f5e8, #d4edda); border: 2px solid #28a745; border-radius: 15px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 8px 25px rgba(40, 167, 69, 0.15);">
             <h3 style="color: #155724; margin-top: 0;">📋 Document Analysis Guide</h3>
             
             <div style="text-align: center; margin-bottom: 1rem;">
                 <h4 style="color: #155724; margin-bottom: 1rem;">📖 View Example Document</h4>
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <button type="button" onclick="showExample()" class="example-btn">
-                        👁️ Show Example Document
-                    </button>
-                    <a href="/download-example" class="example-btn" style="text-decoration: none; display: inline-block;">
-                        📥 Download Example
-                    </a>
-                </div>
+                <button type="button" onclick="showExample()" class="example-btn">
+                    👁️ Show Example Document
+                </button>
                 <p style="font-size: 0.9rem; color: #155724; margin-top: 0.5rem;">
                     See how to structure your document for better CVSS metric detection
                 </p>
             </div>
             
-            <div style="background: #fff; border-radius: 8px; padding: 1rem; border-left: 4px solid #28a745;">
+            <div style="background: #fff; border-radius: 10px; padding: 1.5rem; border-left: 5px solid #28a745; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="color: #155724; margin-top: 0;">💡 Tips for Better Detection:</h4>
                 <ul style="color: #155724; margin: 0.5rem 0; padding-left: 1.5rem;">
                     <li><strong>Use clear terms:</strong> "network attack", "low complexity", "no privileges"</li>
@@ -570,10 +565,10 @@ def render_form() -> bytes:
         </div>
         
         <label for="document">Upload Document</label>
-        <input type="file" id="document" name="document" accept=".docx,.pdf" style="padding: 0.5rem; border: 2px solid #3498db; border-radius: 8px; background: #f8f9fa;" />
-        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem;">
-            Supported formats: .docx, .pdf<br>
-            The system will analyze the document and pre-fill the CVSS metrics.
+        <input type="file" id="document" name="document" accept=".docx,.pdf" style="width: 100%; padding: 0.75rem; border: 2px solid #3498db; border-radius: 10px; background: #f8f9fa; font-size: 1rem; transition: all 0.3s ease;" />
+        <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 0.5rem; text-align: center;">
+            <strong>Supported formats:</strong> .docx, .pdf<br>
+            The system will analyze the document and pre-fill the CVSS metrics automatically.
         </p>
         
         <!-- Example Document Modal -->
@@ -581,7 +576,7 @@ def render_form() -> bytes:
             <div class="modal-content">
                 <span class="close" onclick="closeExample()">&times;</span>
                 <h2>📄 Example Document Structure</h2>
-                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.9rem; line-height: 1.6; max-height: 400px; overflow-y: auto;">
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 1.5rem; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.7; max-height: 500px; overflow-y: auto; border: 1px solid #e0e6ed; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">
                     <strong>Vulnerability Report: Remote Code Execution</strong><br><br>
                     
                     <strong>CVE ID:</strong> CVE-2024-12345<br><br>
@@ -634,7 +629,8 @@ def render_form() -> bytes:
             box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
             text-align: center;
             cursor: pointer;
-            min-width: 200px;
+            min-width: 250px;
+            margin: 0 auto;
         }
         
         .example-btn:hover {
@@ -655,26 +651,30 @@ def render_form() -> bytes:
         
         .modal-content {
             background-color: #fff;
-            margin: 5% auto;
+            margin: 3% auto;
             padding: 2rem;
-            border-radius: 12px;
+            border-radius: 15px;
             width: 90%;
-            max-width: 800px;
-            max-height: 80vh;
+            max-width: 900px;
+            max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            border: 1px solid #e0e6ed;
         }
         
         .close {
             color: #aaa;
             float: right;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             cursor: pointer;
+            line-height: 1;
+            transition: color 0.3s ease;
+            margin-top: -10px;
         }
         
         .close:hover {
-            color: #000;
+            color: #dc3545;
         }
         
         @media (max-width: 768px) {
@@ -991,103 +991,6 @@ class CVSSRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
     
-    def generate_cvss_example_pdf(self) -> bytes:
-        """Generate a PDF example document for CVSS analysis."""
-        # Create a simple PDF-like structure using text formatting
-        # In a full implementation, you'd use a library like reportlab or fpdf
-        
-        example_text = """CVSS Analysis Example Document
-===============================
-
-VULNERABILITY TITLE
-==================
-Remote Code Execution in Web Application
-
-CVE ID
-======
-CVE-2024-12345
-
-DESCRIPTION
-===========
-This critical vulnerability allows remote attackers to execute arbitrary code 
-over the network without requiring any user interaction. The attack complexity 
-is low and requires no privileges. The vulnerability has high impact on 
-confidentiality, integrity, and availability.
-
-TECHNICAL DETAILS
-=================
-Attack Vector: Network
-- The vulnerability is accessible over the network
-- Attackers can exploit this remotely without physical access
-- No local system access is required
-
-Attack Complexity: Low
-- The attack is simple to execute
-- Exploitation requires minimal technical skill
-- No complex conditions need to be met
-
-Privileges Required: None
-- No authentication is required
-- No user privileges are needed
-- Attackers can exploit this anonymously
-
-User Interaction: None
-- No user action is required
-- The attack can be executed automatically
-- Users don't need to click or interact
-
-Scope: Changed
-- The vulnerability affects different components
-- Exploitation impacts other parts of the system
-- The scope extends beyond the vulnerable component
-
-Impact Assessment:
-- Confidentiality: High - Complete data disclosure is possible
-- Integrity: High - Data can be completely modified
-- Availability: High - Service disruption is complete
-
-CVSS METRICS DETECTED
-======================
-Attack Vector: N (Network)
-Attack Complexity: L (Low)
-Privileges Required: N (None)
-User Interaction: N (None)
-Scope: C (Changed)
-Confidentiality Impact: H (High)
-Integrity Impact: H (High)
-Availability Impact: H (High)
-
-EXPECTED RESULT
-==============
-Base Score: 9.8 (Critical)
-Vector String: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
-
-TIPS FOR BETTER DETECTION
-=========================
-1. Use clear, specific terms from the CVSS specification
-2. Avoid ambiguous language like "medium" or "some"
-3. Include technical details about the attack method
-4. Describe the impact clearly and specifically
-5. Mention the scope of the vulnerability
-6. Use consistent terminology throughout
-
-EXAMPLE PHRASES THAT WORK WELL:
-- "This vulnerability allows remote attackers to execute code over the network"
-- "The attack complexity is low and simple to exploit"
-- "No privileges are required for exploitation"
-- "No user interaction is needed"
-- "The scope is changed and affects different components"
-- "This results in complete data disclosure"
-- "The vulnerability has high impact on confidentiality, integrity, and availability"
-
-This document demonstrates the proper structure and terminology needed for 
-accurate CVSS metric detection. Copy this format and modify the content 
-for your specific vulnerability analysis.
-"""
-        
-        # For now, return the text as bytes (in a real implementation, this would be actual PDF content)
-        # Users can copy this text and create their own documents
-        return example_text.encode('utf-8')
 
     def do_GET(self) -> None:
         """Handle GET requests based on the request path."""
@@ -1184,15 +1087,6 @@ for your specific vulnerability analysis.
             self.send_header("Content-Length", str(len(csv_data)))
             self.end_headers()
             self.wfile.write(csv_data)
-        elif path == "/download-example":
-            # Download CVSS analysis example PDF
-            pdf_content = self.generate_cvss_example_pdf()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/pdf")
-            self.send_header("Content-Disposition", "attachment; filename=CVSS_Analysis_Example.pdf")
-            self.send_header("Content-Length", str(len(pdf_content)))
-            self.end_headers()
-            self.wfile.write(pdf_content)
         else:
             # Not found
             self.send_response(404)
