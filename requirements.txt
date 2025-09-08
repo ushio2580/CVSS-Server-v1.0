@@ -1,12 +1,15 @@
-# Dependencies for document processing
+# CVSS Server v1.0 - Dependencies
+# Document processing dependencies
 python-docx==0.8.11
 PyPDF2==3.0.1
-python-magic==0.4.27
-Pillow==10.0.1
-
-# Optional: for better text extraction
 pdfplumber==0.9.0
 
-# Authentication dependencies
-bcrypt==4.0.1
-# Note: 'secrets' module is part of Python standard library
+# Optional: for better file type detection
+python-magic==0.4.27
+
+# Image processing (if needed for document analysis)
+Pillow==10.0.1
+
+# Note: Authentication uses Python standard library (secrets, hashlib)
+# Note: Web server uses Python standard library (http.server)
+# Note: Database uses Python standard library (sqlite3)

@@ -1,26 +1,91 @@
-# CVSS v3.1 Scoring System
+# CVSS Server v1.0 - Complete Vulnerability Assessment System
 
-A web-based Common Vulnerability Scoring System (CVSS) v3.1 calculator and dashboard built with Python standard library and SQLite.
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Deploy](https://img.shields.io/badge/Deploy-Railway-purple.svg)](https://railway.app)
 
-## Features
+A comprehensive web-based **Common Vulnerability Scoring System (CVSS) v3.1** calculator and dashboard with advanced features including user authentication, document processing, and collaborative evaluation management.
 
-- **CVSS v3.1 Base Score Calculation**: Calculate CVSS scores using the official v3.1 specification
-- **Interactive Web Interface**: Modern, responsive UI with gradient backgrounds and severity-based color coding
-- **Dashboard**: Visual analytics with charts and metrics for vulnerability assessments
-- **API Endpoints**: RESTful API for programmatic access
-- **Data Export**: Export evaluations to CSV format
-- **No External Dependencies**: Uses only Python standard library
+## 🚀 Live Demo
 
-## Local Development
+**Production URL**: [https://cvss-server-v10-production.up.railway.app/](https://cvss-server-v10-production.up.railway.app/)
 
-### Prerequisites
-- Python 3.7 or higher
+## ✨ Key Features
 
-### Running Locally
+### 🔐 **Complete Authentication System**
+- **User Registration & Login**: Secure account creation and authentication
+- **Session Management**: HttpOnly cookies with 7-day expiration
+- **Password Security**: SHA256 hashing with unique salt per user
+- **User Profiles**: Personal dashboards and evaluation tracking
+
+### 📊 **CVSS v3.1 Scoring Engine**
+- **Official v3.1 Specification**: Accurate CVSS base score calculations
+- **Interactive Metrics**: Attack Vector, Attack Complexity, Privileges Required, etc.
+- **Severity Classification**: Critical, High, Medium, Low, None
+- **Vector Generation**: Automatic CVSS vector string creation
+
+### 📄 **Intelligent Document Processing**
+- **Multi-format Support**: Word (.docx) and PDF document analysis
+- **Automatic Metric Detection**: AI-powered extraction of CVSS metrics from documents
+- **Smart Pre-filling**: Forms automatically populated with detected values
+- **Pattern Recognition**: Advanced regex-based vulnerability pattern matching
+
+### 👥 **Collaborative Dashboard**
+- **Team Visibility**: View all team members' evaluations
+- **Personal Filtering**: Switch between global and personal views
+- **Real-time Analytics**: Live charts and severity distribution
+- **Evaluation Tracking**: Complete audit trail with user attribution
+
+### 🎨 **Modern User Interface**
+- **Responsive Design**: Works perfectly on desktop and mobile
+- **Gradient Styling**: Beautiful color-coded severity indicators
+- **Interactive Elements**: Smooth animations and hover effects
+- **Accessibility**: Clean, intuitive navigation
+
+## 🛠️ Technology Stack
+
+### **Backend**
+- **Python 3.12**: Core application language
+- **HTTP Server**: Built-in `http.server.ThreadingHTTPServer`
+- **SQLite**: Embedded database for data persistence
+- **Standard Library**: Minimal external dependencies
+
+### **Frontend**
+- **HTML5**: Semantic markup and modern structure
+- **CSS3**: Advanced styling with gradients and animations
+- **Vanilla JavaScript**: Interactive functionality without frameworks
+- **Responsive Design**: Mobile-first approach
+
+### **Document Processing**
+- **python-docx**: Microsoft Word document parsing
+- **PyPDF2**: PDF text extraction
+- **pdfplumber**: Enhanced PDF processing
+- **Regular Expressions**: Pattern matching for metric detection
+
+### **Deployment**
+- **Railway**: Cloud hosting platform
+- **GitHub**: Version control and CI/CD
+- **SQLite**: Production database
+
+## 🚀 Quick Start
+
+### **Prerequisites**
+- Python 3.12 or higher
+- Git
+
+### **Local Installation**
+
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd cvss_server_project
+git clone https://github.com/ushio2580/CVSS-Server-v1.0.git
+cd CVSS-Server-v1.0
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 
 # Run the server
 python server.py
@@ -28,103 +93,171 @@ python server.py
 
 The application will be available at `http://localhost:8000`
 
-## Deployment Options
+### **First Time Setup**
+1. **Register**: Create your account at `/register`
+2. **Login**: Sign in with your credentials
+3. **Evaluate**: Start assessing vulnerabilities
+4. **Upload Documents**: Try the document processing feature
+5. **Dashboard**: View team evaluations and analytics
 
-### Option 1: Render (Recommended for Backend)
+## 📖 User Guide
 
-Render is perfect for hosting the Python backend server.
+### **Authentication**
+- **Registration**: Create account with email, password, and full name
+- **Login**: Secure authentication with session management
+- **Logout**: Clean session termination
 
-#### Steps:
-1. **Fork/Clone** this repository to your GitHub account
-2. **Sign up** for a free account at [render.com](https://render.com)
-3. **Create a new Web Service**:
-   - Connect your GitHub repository
-   - Choose the repository
-   - Set the following:
-     - **Name**: `cvss-server`
-     - **Environment**: `Python`
-     - **Build Command**: `pip install -r requirements.txt`
-     - **Start Command**: `python server.py`
-4. **Deploy** - Render will automatically deploy your application
+### **Vulnerability Evaluation**
+1. **Manual Entry**: Fill CVSS metrics manually
+2. **Document Upload**: Upload Word/PDF for automatic analysis
+3. **Review Results**: Verify detected metrics
+4. **Submit**: Save evaluation to database
 
-#### Environment Variables (Optional)
+### **Dashboard Features**
+- **All Users View**: See all team evaluations (default)
+- **My Evaluations**: Filter to personal assessments only
+- **Severity Charts**: Visual distribution of vulnerability severities
+- **Top Evaluations**: Highest-scoring vulnerabilities
+- **User Attribution**: See who evaluated each vulnerability
+
+### **Document Processing**
+- **Supported Formats**: .docx, .pdf
+- **Automatic Detection**: CVSS metrics extracted automatically
+- **Manual Override**: Adjust detected values as needed
+- **Pattern Recognition**: Recognizes common vulnerability descriptions
+
+## 🔧 API Endpoints
+
+### **Authentication**
+- `GET /login` - Login page
+- `POST /login` - User authentication
+- `GET /register` - Registration page
+- `POST /register` - User registration
+- `GET /logout` - User logout
+
+### **Core Application**
+- `GET /` - Main evaluation form (requires auth)
+- `POST /evaluate` - Submit new evaluation (requires auth)
+- `GET /dashboard` - Analytics dashboard (requires auth)
+- `GET /dashboard?show_all=true` - Global view
+- `GET /dashboard?show_all=false` - Personal view
+
+### **API Endpoints**
+- `GET /api/dashboard/summary` - JSON dashboard data
+- `GET /api/vulns` - List all evaluations
+- `GET /api/vulns/<id>` - Get specific evaluation
+- `GET /api/export/csv` - Export data as CSV
+
+## 🚀 Deployment
+
+### **Railway Deployment (Recommended)**
+
+1. **Fork** this repository to your GitHub account
+2. **Sign up** for [Railway](https://railway.app)
+3. **Connect** your GitHub repository
+4. **Deploy** - Railway will automatically detect Python and deploy
+
+**Environment Variables** (Optional):
 - `HOST`: `0.0.0.0` (default)
 - `PORT`: `8000` (default)
 
-### Option 2: Netlify (Frontend Only)
+### **Alternative Deployment Options**
 
-Since this is a Python server application, Netlify is not suitable for the backend. However, you could:
-
-1. **Deploy the backend to Render** (as above)
-2. **Create a simple frontend** that calls the Render API
-3. **Deploy the frontend to Netlify**
-
-### Option 3: Local Testing for Your Group
-
-For testing with your group, you can:
-
-1. **Run locally** and use a service like ngrok to expose your local server:
-   ```bash
-   # Install ngrok
-   pip install pyngrok
-   
-   # Run your server
-   python server.py
-   
-   # In another terminal, expose your local server
-   ngrok http 8000
-   ```
-
-2. **Share the ngrok URL** with your group members
-
-## API Endpoints
-
-- `GET /` - Main evaluation form
-- `GET /dashboard` - Dashboard with analytics
-- `GET /api/dashboard/summary` - JSON summary of dashboard data
-- `GET /api/vulns` - List all evaluations
-- `GET /api/vulns/<id>` - Get specific evaluation
-- `GET /api/export/csv` - Export all data as CSV
-- `POST /evaluate` - Submit new evaluation
-
-## CVSS Severity Levels
-
-- **Critical** (9.0-10.0): Red gradient
-- **High** (7.0-8.9): Orange gradient  
-- **Medium** (4.0-6.9): Yellow gradient
-- **Low** (0.1-3.9): Green gradient
-- **None** (0.0): Gray gradient
-
-## File Structure
-
-```
-cvss_server_project/
-├── server.py          # Main server application
-├── cvss.py           # CVSS calculation logic
-├── database.db       # SQLite database (auto-created)
-├── requirements.txt  # Python dependencies (empty - uses stdlib)
-├── render.yaml       # Render deployment config
-├── Procfile          # Render process file
-├── runtime.txt       # Python version specification
-└── README.md         # This file
+#### **Render**
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: cvss-server
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
 ```
 
-## Technologies Used
+#### **Heroku**
+```bash
+# Procfile
+web: python server.py
 
-- **Backend**: Python 3.9+ (Standard Library)
-- **Database**: SQLite
-- **Web Server**: http.server (built-in)
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Styling**: Modern CSS with gradients and animations
+# runtime.txt
+python-3.12.0
+```
 
-## Contributing
+## 📊 CVSS Severity Levels
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally
-5. Submit a pull request
+| Severity | Score Range | Color | Description |
+|----------|-------------|-------|-------------|
+| **Critical** | 9.0-10.0 | 🔴 Red | Immediate action required |
+| **High** | 7.0-8.9 | 🟠 Orange | Address within 24 hours |
+| **Medium** | 4.0-6.9 | 🟡 Yellow | Address within 1 week |
+| **Low** | 0.1-3.9 | 🟢 Green | Address within 1 month |
+| **None** | 0.0 | ⚪ Gray | No impact |
 
-## License
+## 📁 Project Structure
 
-This project is open source and available under the MIT License.
+```
+CVSS-Server-v1.0/
+├── server.py              # Main application server
+├── document_processor.py   # Document analysis engine
+├── cvss.py                # CVSS calculation logic
+├── requirements.txt        # Python dependencies
+├── runtime.txt            # Python version specification
+├── Procfile               # Deployment configuration
+├── README.md              # This documentation
+├── LICENSE                # MIT License
+└── .gitignore            # Git ignore rules
+```
+
+## 🔒 Security Features
+
+- **Password Hashing**: SHA256 with unique salt per user
+- **Session Security**: HttpOnly cookies with expiration
+- **SQL Injection Protection**: Parameterized queries
+- **Input Validation**: Comprehensive data sanitization
+- **CSRF Protection**: Session-based request validation
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### **Development Guidelines**
+- Follow PEP 8 style guidelines
+- Add tests for new features
+- Update documentation as needed
+- Ensure backward compatibility
+
+## 📝 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **CVSS v3.1 Specification**: [FIRST.org](https://www.first.org/cvss/)
+- **Python Community**: For excellent standard library
+- **Railway**: For seamless deployment platform
+- **Open Source Contributors**: For various Python packages
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/ushio2580/CVSS-Server-v1.0/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ushio2580/CVSS-Server-v1.0/discussions)
+- **Email**: Contact through GitHub profile
+
+## 🔄 Version History
+
+- **v1.0.0** - Complete system with authentication, document processing, and collaborative features
+- **v0.9.0** - Basic CVSS calculator with dashboard
+- **v0.8.0** - Initial release with core functionality
+
+---
+
+**Made with ❤️ for the cybersecurity community**
+
+[![GitHub stars](https://img.shields.io/github/stars/ushio2580/CVSS-Server-v1.0?style=social)](https://github.com/ushio2580/CVSS-Server-v1.0/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ushio2580/CVSS-Server-v1.0?style=social)](https://github.com/ushio2580/CVSS-Server-v1.0/network)
